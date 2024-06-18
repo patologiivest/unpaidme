@@ -1,0 +1,3 @@
+-- Timescale versions prior to ...
+SELECT create_hypertable('trans.events', 'happened_at', chunk_time_interval => interval '1 month');
+

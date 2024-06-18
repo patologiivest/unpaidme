@@ -1,1 +1,24 @@
+DROP TABLE IF EXISTS config.net_structure_sequence;
+DROP TABLE IF EXISTS config.net_structure_mutex;
+DROP TABLE IF EXISTS config.net_event_names;
+DROP TABLE IF EXISTS config.net_event_names;
+DROP TABLE IF EXISTS config.lab_locations;
+DROP TABLE IF EXISTS config.workflow_profile;
+DROP TABLE IF EXISTS config.specimen_state;
+DROP TABLE IF EXISTS config.slide_types;
+DROP TABLE IF EXISTS config.slide_state;
+DROP TABLE IF EXISTS config.requisition_type;
+DROP TABLE IF EXISTS config.patho_division;
+DROP TABLE IF EXISTS config.patho_division;
+DROP TABLE IF EXISTS config.fixation_methods;
+DROP TABLE IF EXISTS config.case_state;
+DROP TABLE IF EXISTS config.case_priority;
+DROP TABLE IF EXISTS config.builtin_token_types;
+DROP TABLE IF EXISTS config.builtin_event_types;
+DROP TABLE IF EXISTS config.block_types;
+DROP TABLE IF EXISTS config.block_state;
+DROP TABLE IF EXISTS config.analysis_state;
+DROP TABLE IF EXISTS config.accounting_profiles;
+DROP TABLE IF EXISTS config.actor_roles;
+
 DROP SCHEMA IF EXISTS config;

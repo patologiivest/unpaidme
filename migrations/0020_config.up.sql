@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS config.actor_roles (
     CONSTRAINT user_roles_pkey PRIMARY KEY (id)
 );
 
-CREATE TABLE IF NOT EXISTS config.accounting_profile (
+CREATE TABLE IF NOT EXISTS config.accounting_profiles (
     id int4 NOT NULL,
     "name" varchar(255) NOT NULL,
     CONSTRAINT accounting_profile_pkey PRIMARY KEY (id)
