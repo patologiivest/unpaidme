@@ -1,0 +1,6 @@
+[book]
+authors = ["Patrick Stünkel"]
+language = "en"
+multilingual = false
+src = "src"
+title = "UNiversal PAthology Interoperability Data Model for Events"

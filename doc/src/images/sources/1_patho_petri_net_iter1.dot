@@ -1,0 +1,83 @@
+digraph PetriNet {
+    // Define nodes for Places in the Petri Net
+    layout=neato; // dot, neato, circo
+    node [shape=rect, label="", width=0.5];
+    10 [xlabel="Case Arrived", fillcolor="black", style="filled", width=0.25]
+    20 [xlabel="Accessioning"]
+    30 [xlabel="Grossing"];
+    40 [xlabel="Processing"];
+    50 [xlabel="Embedding"];
+    60 [xlabel="Sectioning"];
+    70 [xlabel="Staining"];
+    85 [xlabel="Scanning"];
+    90 [xlabel="Microscopy"];
+    91 [xlabel="(Rework required)", fillcolor="black", style="filled", width=0.25]
+    99 [xlabel="Answered", fillcolor="black", style="filled", width=0.25];
+    92 [xlabel="Extra Grossing requested", fillcolor="black", style="filled", width=0.25];
+    93 [xlabel="Extra Stain requested", fillcolor="black", style="filled", width=0.25];
+    80 [xlabel="Case dispatched", fillcolor="black", style="filled", width=0.25];
+
+
+    933 [xlabel="", fillcolor="black", style="filled", width=0.25] // retrieve
+
+    // Define nodes for Transitions in the Petri Net
+    node [shape=circle, label="", width=0.5];
+    1020 [xlabel=""]; //Arrived Cases
+    2030 [xlabel=""]; // Grossing Queue
+    3040 [xlabel=""]; // Processing Queue
+    4050 [xlabel=""]; // Embedding Queue
+    5060 [xlabel=""]; // Sectioning Queue
+    6070 [xlabel=""]; // Staining Queue
+    600 [xlabel="Block Archive"];
+    7085 [xlabel=""]; // Scanning Queue
+    8590 [xlabel=""]; // Microscopy Queue
+    9091 [xlabel=""] // Microscoped
+    911 [xlable=""];
+    9330 [xlabel=""]; // Histology Worklist
+    8580 [xlabel=""]; // dispatching queue
+    xxx [];
+
+    // Define the relations: Places -> Transitions
+    10 -> 1020;
+    20 -> 2030;
+    30 -> 3040;
+    40 -> 4050;
+    50 -> 5060;
+    60 -> 6070;
+    60 -> 600 [len=1, dir="backward"];
+    70 -> 7085;
+    85 -> 8580;
+    90 -> 9091;
+    91 -> 911;
+    92 -> 2030;
+    
+ 
+    
+    // Define the relations: Transitions -> Places
+    1020 -> 20;
+    2030 -> 30;
+    3040 -> 40;
+    4050 -> 50;
+    5060 -> 60;
+    6070 -> 70;
+    7085 -> 85;
+    8590 -> 90;
+    9091 -> 99;
+    9091 -> 91;
+    911 -> 92;
+    911 -> 93 [len=2];
+    93 -> 9330;
+    9330 -> 933;
+    600 -> 933;
+    933 -> 5060;
+    80 -> 8590;
+  8580 -> 80
+
+
+    30 -> xxx [len=2];
+    xxx -> 80 [len=2];
+    // Set graph properties
+    rankdir=LR;
+    edge [arrowhead=normal];
+}
+

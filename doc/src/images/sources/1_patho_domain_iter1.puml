@@ -1,0 +1,15 @@
+@startuml
+skinparam nodesep 70
+class Case
+class Container
+class Block
+class Analysis
+class Slide
+class Report
+Case *--> "1..*" Container
+Case *--> "1..*" Block
+Case *--> "0..*" Analysis
+Container "1..*" -> "1..*" Block 
+Block *--> "1..*" Slide
+Case -> "1..*" Report
+@enduml
