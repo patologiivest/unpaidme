@@ -14,6 +14,27 @@ Thus, there is a table of all `actors` and table capturing what `roles` these ac
 [^actor]: The may be also non-human actors.
 
 
+![ERD diagram showing three tables](./images/png/2_2_role_assigs.png)
+
+```sql
+CREATE TABLE IF NOT EXISTS master.actors (
+	id int4 NOT NULL,
+	"name" text NOT NULL,
+	alias text NULL,
+	CONSTRAINT actors_pkey PRIMARY KEY (id),
+	CONSTRAINT actors_name_key UNIQUE (name)
+);
+
+CREATE TABLE IF NOT EXISTS master.role_assignments (
+	actor_id int4 NOT NULL,
+	role_id int4 NOT NULL,
+	valid_from timestamptz NOT NULL,
+	valid_until timestamptz NULL,
+	CONSTRAINT role_assignments_pkey PRIMARY KEY (actor_id, role_id, valid_from),
+	CONSTRAINT role_assignments_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES master.actors(id),
+	CONSTRAINT role_assignments_role_id_fkey FOREIGN KEY (role_id) REFERENCES config.actor_roles(id)
+);
+```
 
 
 ## Requisitioners and Organizations
@@ -21,6 +42,29 @@ Thus, there is a table of all `actors` and table capturing what `roles` these ac
 Requisitioners are those sending in specimen to the laboratory. 
 Often, there are multiple requisitioners that are working at the same organization and the organization may be comprised of different units. 
 This is captured by the `requisitioners` and `organizations` tables.
+
+![ERD diagram showing two table](./images/png/2_2_req_orgas.png)
+
+```sql
+CREATE TABLE IF NOT EXISTS master.organizations(
+    id int4 NOT NULL,
+    "name" text NOT NULL,
+    parent_organization int4 NULL,
+    CONSTRAINT organization_pkey PRIMARY KEY (id),
+    CONSTRAINT organizartion_uniq UNIQUE ("name")
+);
+ALTER TABLE master.organizations ADD CONSTRAINT organization_parent_fkey FOREIGN KEY (parent_organization) REFERENCES master.organizations(id);
+
+CREATE TABLE IF NOT EXISTS master.requisitioners (
+	id int4 NOT NULL,
+	"name" text NOT NULL,
+	organization int4 NULL,
+	CONSTRAINT requisitioners_name_key UNIQUE ("name"),
+	CONSTRAINT requisitioners_pkey PRIMARY KEY (id),
+	CONSTRAINT requisitioner_organization_fkey FOREIGN KEY (organization) REFERENCES master.organizations(id)
+);
+
+```
 
 ## Codes and Analyis Catalogue 
 
@@ -46,6 +90,8 @@ The codes are then used to define a catalogue of
 - known specimen types
 - known staining methods
 - known analysis methods (i.e. which are not considered stains -> not related to a tissue slide).
+
+![ERD diagram showing tables and relationships around codes](./images/png/2_2_coding_types.png)
 
 ## Worklow and Accounting Profiles
 
