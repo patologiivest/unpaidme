@@ -66,6 +66,24 @@ CREATE TABLE IF NOT EXISTS master.requisitioners (
 
 ```
 
+
+## Workstations 
+
+Events may be associated with a _workstation_, i.e. where they have taken place. 
+Additionally, the workstation may be linked to a lab location.
+
+```sql
+CREATE TABLE  master.workstations (
+	id int4 NOT NULL,
+	"name" text NOT NULL,
+	workstation_desc text NULL,
+	lab_location int4 NULL,
+	CONSTRAINT workstations_name_key UNIQUE (name),
+	CONSTRAINT workstations_pkey PRIMARY KEY (id),
+	CONSTRAINT workstations_fk_lab_location FOREIGN KEY (lab_location) REFERENCES config.lab_locations(id);
+);
+```
+
 ## Codes and Analyis Catalogue 
 
 _Coding_ is central activity in the medical disciplines.

@@ -8,7 +8,6 @@ It contains the following
 - _UML class diagrams_ depicting the domain model to grasp the high-level overview and to be included in technical documentation.
 - _Database Schema Definitions_ written as SQL DDL statements to be used in the relational database of your choice, including
 some sensibel defaults w.r.t. indices etc.
-- _a demo web application_ written in RUST that provides a REST API to interact with the database.
 
 
 ## Goals 

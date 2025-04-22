@@ -126,11 +126,10 @@ ALTER TABLE master.analysis_codes ADD CONSTRAINT staining_methods_coding_fkey FO
 
 CREATE SEQUENCE IF NOT EXISTS master.workstations_seq;
 
-
 CREATE TABLE IF NOT EXISTS master.workstations (
      id int4 NOT NULL DEFAULT nextval('master.workstations_seq'::regclass),
-     "name" varchar(255) NOT NULL,
-     workstation_desc varchar(255) NULL,
+     "name" text NOT NULL,
+     workstation_desc text NULL,
      lab_location int4 NULL,
      CONSTRAINT workstations_name_key UNIQUE (name),
      CONSTRAINT workstations_pkey PRIMARY KEY (id)
