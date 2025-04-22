@@ -1,7 +1,11 @@
 digraph PetriNet {
     // Define nodes for Places in the Petri Net
-    layout=neato; // dot, neato, circo
-    node [shape=rect, label="", width=0.5];
+    //layout=neato; // dot, neato, circo
+    layout="dot";
+    rankdir=TB;
+    ratio=0.3;
+
+    node [shape=rect, label="", width=0.5, labelangle=0.0];
     10 [xlabel="Case Arrived", fillcolor="black", style="filled", width=0.25]
     20 [xlabel="Accessioning"]
     30 [xlabel="Grossing"];
@@ -22,8 +26,8 @@ digraph PetriNet {
 
     // Define nodes for Transitions in the Petri Net
     node [shape=circle, label="", width=0.5];
-    1020 [xlabel=""]; //Arrived Cases
-    2030 [xlabel=""]; // Grossing Queue
+    1020 []; //Arrived Cases
+    2030 []; // Grossing Queue
     3040 [xlabel=""]; // Processing Queue
     4050 [xlabel=""]; // Embedding Queue
     5060 [xlabel=""]; // Sectioning Queue
@@ -65,7 +69,7 @@ digraph PetriNet {
     9091 -> 99;
     9091 -> 91;
     911 -> 92;
-    911 -> 93 [len=2];
+    911 -> 93;
     93 -> 9330;
     9330 -> 933;
     600 -> 933;
@@ -74,8 +78,8 @@ digraph PetriNet {
   8580 -> 80
 
 
-    30 -> xxx [len=2];
-    xxx -> 80 [len=2];
+    30 -> xxx [len=3];
+    xxx -> 80 [len=1];
     // Set graph properties
     rankdir=LR;
     edge [arrowhead=normal];
