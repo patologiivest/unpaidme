@@ -28,7 +28,7 @@ jobs:
       id: deployment
       uses: actions/upload-pages-artifact@v3
       with:
-        path: book
+        path: doc/book/
 
   deploy:
     environment:
