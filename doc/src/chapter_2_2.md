@@ -4,6 +4,20 @@ The purpose of this schema is host tables, which contain data that can be consid
 which can be subject to changes. In database admin vernacular this is often referred to as _master-data_.
 An example is a table containing all `requisitioners`, who are sending their specimens to your lab.
 
+## Accounting Profiles 
+
+Many laboratories need to perform analysis w.r.t. to accounting, e.g. for getting reimbursements etc.
+To this end, there is the enum-table `accounting_profiles`, which contains different accounting categories.
+A common use case is that different specimen types fall into a specific reimbursement category. 
+In such case, the `level` column may be used to impose an ordinal ordering upon a subset of the accounting categories.
+ANother use case is to distinguish between requisitioners, who are refunded by a public healthcase system and those 
+who are privately funded.
+
+
+```sql
+{{#include ../../schema/migrations/0200_master.up.sql:4:10}}
+
+```
 
 ## Actors and Roles
 
@@ -17,23 +31,7 @@ Thus, there is a table of all `actors` and table capturing what `roles` these ac
 ![ERD diagram showing three tables](./images/png/2_2_role_assigs.png)
 
 ```sql
-CREATE TABLE IF NOT EXISTS master.actors (
-	id int4 NOT NULL,
-	"name" text NOT NULL,
-	alias text NULL,
-	CONSTRAINT actors_pkey PRIMARY KEY (id),
-	CONSTRAINT actors_name_key UNIQUE (name)
-);
-
-CREATE TABLE IF NOT EXISTS master.role_assignments (
-	actor_id int4 NOT NULL,
-	role_id int4 NOT NULL,
-	valid_from timestamptz NOT NULL,
-	valid_until timestamptz NULL,
-	CONSTRAINT role_assignments_pkey PRIMARY KEY (actor_id, role_id, valid_from),
-	CONSTRAINT role_assignments_actor_id_fkey FOREIGN KEY (actor_id) REFERENCES master.actors(id),
-	CONSTRAINT role_assignments_role_id_fkey FOREIGN KEY (role_id) REFERENCES config.actor_roles(id)
-);
+{{#include ../../schema/migrations/0200_master.up.sql:13:35}}
 ```
 
 
@@ -43,79 +41,82 @@ Requisitioners are those sending in specimen to the laboratory.
 Often, there are multiple requisitioners that are working at the same organization and the organization may be comprised of different units. 
 This is captured by the `requisitioners` and `organizations` tables.
 
-![ERD diagram showing two table](./images/png/2_2_req_orgas.png)
+![ERD diagram showing two tables](./images/png/2_2_req_orgas.png)
 
 ```sql
-CREATE TABLE IF NOT EXISTS master.organizations(
-    id int4 NOT NULL,
-    "name" text NOT NULL,
-    parent_organization int4 NULL,
-    CONSTRAINT organization_pkey PRIMARY KEY (id),
-    CONSTRAINT organizartion_uniq UNIQUE ("name")
-);
-ALTER TABLE master.organizations ADD CONSTRAINT organization_parent_fkey FOREIGN KEY (parent_organization) REFERENCES master.organizations(id);
-
-CREATE TABLE IF NOT EXISTS master.requisitioners (
-	id int4 NOT NULL,
-	"name" text NOT NULL,
-	organization int4 NULL,
-	CONSTRAINT requisitioners_name_key UNIQUE ("name"),
-	CONSTRAINT requisitioners_pkey PRIMARY KEY (id),
-	CONSTRAINT requisitioner_organization_fkey FOREIGN KEY (organization) REFERENCES master.organizations(id)
-);
-
+{{#include ../../schema/migrations/0200_master.up.sql:39:62}}
 ```
 
 
 ## Workstations 
 
-Events may be associated with a _workstation_, i.e. where they have taken place. 
-Additionally, the workstation may be linked to a lab location.
+Events may be associated with a _workstation_, i.e. where they have taken place.
+This could be a grossing bench, a sectioning station or simply a dekstop computer.
+The workstation can be linked to a lab location.
+
+![ERD diagram showing two tables](./images/png/2_2_workstations.png)
 
 ```sql
-CREATE TABLE  master.workstations (
-	id int4 NOT NULL,
-	"name" text NOT NULL,
-	workstation_desc text NULL,
-	lab_location int4 NULL,
-	CONSTRAINT workstations_name_key UNIQUE (name),
-	CONSTRAINT workstations_pkey PRIMARY KEY (id),
-	CONSTRAINT workstations_fk_lab_location FOREIGN KEY (lab_location) REFERENCES config.lab_locations(id);
-);
+{{#include ../../schema/migrations/0200_master.up.sql:66:77}}
 ```
 
-## Codes and Analyis Catalogue 
+## Codes, Specimen Types and Analysis Catalogue 
 
-_Coding_ is central activity in the medical disciplines.
-It resembles the _modelling_ activity within computer science / software engineering.
+_Coding_ is a central activity in medical disciplines.
+It resembles _modelling_ within computer science / software engineering.
 The idea is to create common semantic understanding of similar concepts.
-In general, they appear as classification schemes that describes different types of diseases (e.g. ICD-11), biological measurements (LOINC), or simply the majority of all clinical knowledge (SNOMED-CT). 
-When several medical professionals agree on a coding scheme, semantic interopability becomes tangible as they 
-now can make sure that they interpret the same information item in the same way.
-The main issue with the existing coding schemes is that 
-1. there are many of them, and 
-2. they tend to change regularly
+There are classification schemes that describes different types of diseases (e.g. [ICD-11](https://icd.who.int/en/)),
+biological measurements (e.g. [LOINC](https://loinc.org/)), or ontologies that try to capture the majority of all clinical knowledge (e.g. [SNOMED-CT](https://browser.ihtsdotools.org/)). 
+With coding schemes, semantic interopability becomes tangible as one 
+now can make sure that everyone interprets the same information item in the same way.
+
+However, the main issue with the existing coding schemes is that 
+1. there are many of them, 
+2. they may be way to comprehensive (too cumbersome) to work with,
+3. they may lake necessary concepts, and/or
+4. they tend to change regularly.
+
+In UNPAIDME, we are trying to have a pragmatic approach towards these coding systems:
+Concretely, we remain mostly agnostic w.r.t. the ontological dimension but we keep the idea 
+of **unique identification**. To account for multiple coding systems, we allow to express 
+_semantic mappings_ between concepts. The intepretation of these mappings (i.e. "parent/child", "equivalence", 
+"replacement") is up to the user.
 
 
-This data model aims to support the practice of medical coding as the backbone to later code different types 
-of specimens, tissue stainining methods, or other analytical diagnostic methods.
-There is a central `code` table, which contains all the codes in a coding scheme. 
+There is a central `code` table, which contains _codes_ in a coding _scheme_. 
+The combination of a code and a scheme must be globally unique but the same code may appear in 
+multiple schemes. If two codes shall represent "the same" ontological concept, one may define 
+an entry in `code_mapping` and set the `mapping_type` accordingly (e.g. "synonym", "identity", etc.).
 Codes have a technical _validity_, may be hierarchical organized, and can be related by mappings.
-The different type of code mappings are kept completely opaque and therefore up to the user to define.
+Each code and mapping also has a technical _validity_ (`valid_from`/`valid_until`) to cacount for changes in coding systems.
+Code may express a hierarchy (taxonomy) by using the `parent_code`.
 
 
-The codes are then used to define a catalogue of 
-- known specimen types
-- known staining methods
+The codes are further used to define a catalogue of 
+- known specimen types (identified by a pair of codes identifying the anatomical location and the clinical procedure to extract it),
+- known staining methods (used on a slide),
+- known fixation methods (used within a specimen container),
 - known analysis methods (i.e. which are not considered stains -> not related to a tissue slide).
 
 ![ERD diagram showing tables and relationships around codes](./images/png/2_2_coding_types.png)
 
-## Worklow and Accounting Profiles
+```sql
+{{#include ../../schema/migrations/0200_master.up.sql:81:175}}
+```
+
+### Implementation Guidelines 
+
+One may ask, whether it is necessary to find a suitable ontology to host one's specimen types, staining methods, and 
+analysis types before he or she may be able to use this database schema? 
+The answer is of course: No! Even though, it is encouraged to have reliable coding systems, a pragmatic approach 
+is to define a list/catalogue of specimen types, stainining methods, etc., which is used in the concrete laboratory.
+This catalogue then receives a non-global name, e.g. "`STAINING_METHODS`".
+To illustrate this, we have included an example catalogue of common staining methods and also the official catalogue 
+of specimen types for which there exist a refund category in the national reimbursement scheme.
+
+### Specimen Type Profiles
 
 
-Finally, cases may be tagged with a _workflow_ and/or _accounting_ profile. 
-This, is useful for later reporting where one may be interested in distinguishing differnt types of cases (e.g. 
-a regular histopathology workflow vs. one where the laboratory serves as a consultant for an already prepared cased).
-
-
+```sql
+{{#include ../../schema/migrations/0200_master.up.sql:178:199}}
+```

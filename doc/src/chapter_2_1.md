@@ -13,6 +13,7 @@ The following tables may require your attention:
 - [`case_priority`](#case-priority)
 - [`lab_locations`](#lab-locations)
 - [`requisition_type`](#requisition-type)
+- [`workflow_profiles`](#workflow-profiles)
 
 Under certain circumstances, also
 - [`actor_roles`](#actor-roles)
@@ -39,12 +40,7 @@ enum ActorRole {
 ```
 
 ```sql
-CREATE TABLE config.actor_roles (
-    id int4 NOT NULL,
-    "name" text NOT NULL,
-    CONSTRAINT actor_roles_pkey PRIMARY KEY (id),
-    CONSTRAINT actor_roles_uniq UNIQUE ("name")
-);
+{{#include ../../schema/migrations/0100_config.up.sql:4:9}}
 ```
 
 ## Block Types 
@@ -64,12 +60,7 @@ enum BlockType {
 ```
 
 ```sql
-CREATE TABLEconfig.block_types (
-    id int4 NOT NULL,
-    "name" text NOT NULL,
-    CONSTRAINT block_types_pkey PRIMARY KEY (id),
-    CONSTRAINT block_types_uniq UNIQUE ("name")
-);
+{{#include ../../schema/migrations/0100_config.up.sql:12:17}}
 ```
 
 ## Case Priority
@@ -87,12 +78,7 @@ enum CasePriority {
 }
 ```
 ```sql
-CREATE TABLEconfig.case_priority (
-    id int4 NOT NULL,
-    "name" text NOT NULL,
-    CONSTRAINT case_priority_pkey PRIMARY KEY (id),
-    CONSTRAINT case_priority_uniq UNIQUE ("name")
-);
+{{#include ../../schema/migrations/0100_config.up.sql:19:24}}
 ```
 
 ## Event Types 
@@ -112,11 +98,7 @@ enum EventType {
 ```
 
 ```sql
-CREATE TABLEconfig.event_types (
-	id int4 NOT NULL,
-	"name" text NOT NULL,
-	CONSTRAINT event_types_pkey PRIMARY KEY (id)
-);
+{{#include ../../schema/migrations/0100_config.up.sql:26:31}}
 ```
 
 ## Event Names
@@ -132,15 +114,7 @@ which indicates whether the event name describes a proper event (value = `0`) or
 The complete list of the event names is found in [Section 3.1](./chapter_3_1.md)
 
 ```sql
-CREATE TABLE config.event_names (
-    id int4 NOT NULL,
-    "name" text NOT NULL,
-    default_event_type int4 NULL,
-    CONSTRAINT event_names_name_key UNIQUE (name),
-    CONSTRAINT event_names_pkey PRIMARY KEY (id),
-    CONSTRAINT event_names_default_event_type_fkey FOREIGN KEY (default_event_type) REFERENCES config.event_types(id)
-
-);
+{{#include ../../schema/migrations/0100_config.up.sql:33:42}}
 
 ```
 
@@ -155,12 +129,7 @@ Also, the use of this table is entirely optional.
 > you have to adjust the contents of this table yourself (or simply ignore it).
 
 ```sql
-CREATE TABLE config.lab_locations (
-    id int4 NOT NULL,
-    "name" text NOT NULL,
-    CONSTRAINT lab_locations_pkey PRIMARY KEY (id),
-    CONSTRAINT lab_locations_uniq UNIQUE (name)
-);
+{{#include ../../schema/migrations/0100_config.up.sql:45:50}}
 ```
 
 
@@ -181,12 +150,7 @@ enum PathoDivision {
 ```
 
 ```sql
-CREATE TABLE config.patho_division (
-    id int4 NOT NULL,
-    "name" text NOT NULL,
-    CONSTRAINT patho_division_pkey PRIMARY KEY (id),
-    CONSTRAINT patho_division_uniq UNIQUE (name)
-);
+{{#include ../../schema/migrations/0100_config.up.sql:52:57}}
 ```
 
 ## Requisition Type
@@ -207,12 +171,7 @@ enum RequisitionType {
 ```
 
 ```sql
-CREATE TABLE config.requisition_type (
-      id int4 NOT NULL,
-      "name" text NOT NULL,
-      CONSTRAINT requisition_type_pkey PRIMARY KEY (id),
-      CONSTRAINT requisition_type_uniq UNIQUE ("name")
-);
+{{#include ../../schema/migrations/0100_config.up.sql:59:64}}
 ```
 
 ## Slide Type
@@ -230,17 +189,12 @@ enum SlideType {
 ```
 
 ```sql
-CREATE TABLE config.slide_types (
-    id int4 NOT NULL,
-    "name" text NOT NULL,
-    CONSTRAINT slide_types_pkey PRIMARY KEY (id),
-    CONSTRAINT slide_types_uniq UNIQUE ("name")
-);
+{{#include ../../schema/migrations/0100_config.up.sql:66:71}}
 ```
 
 ## Token Type
 
-Finally, the token type table is used to distinguish between the different types of "_tokens_" flowing
+The token type table is used to distinguish between the different types of "_tokens_" flowing
 through the pathology laboratory. These tokens directly correspond to the main entities of the [domain model](./chapter_1_1.md) and hence the contents of this table should not be changed.
 
 
@@ -252,17 +206,23 @@ enum TokenType {
     SLIDE = 3,
     ANALYSIS = 4,
     REPORT = 5,
+    OTHER = 6,
 }
 ```
 
 ```sql
-CREATE TABLE config.token_types (
-    id int4 NOT NULL,
-    "name" text NOT NULL,
-    CONSTRAINT token_types_pkey PRIMARY KEY (id),
-    CONSTRAINT token_types_uniq UNIQUE ("name")
-);
+{{#include ../../schema/migrations/0100_config.up.sql:74:79}}
 ```
 
+## Workflow Profiles 
 
+The `workflow_profiles` table can be used to configure different types of workflows for cases.
+A common example is the distinction between cases, where grossing is either performed by lab technicians (more generic and standardized procedures) 
+or residents (more complex and adhoc procedures).
+Another example is to distinguish between different "organ groups", i.e. specialization domains of pathologists (gynecology, dermatology,
+neurology, etc.).
+
+```sql
+{{#include ../../schema/migrations/0100_config.up.sql:81:86}}
+```
 

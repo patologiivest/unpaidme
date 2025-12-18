@@ -12,10 +12,11 @@ Traditionally, there was not a focus on interoperability among _laboratory infor
 Hence, there is no common data model or exchange format tha facilitates portability of data from one system to another. 
 
 
-
 ## How to use this repository?
 
 The contents of this repository, i.e. database schemas, scripts and tools are freely available under the MIT license.
-Feel free to use it for you own use cases and also feel free to contribute back to this repository the proposed data models.
+Feel free to use it for you own use cases and also we would like to contribute back to this repository the proposed data models:
+A standard is only truly useful if it is adopted by many and learning from each other's ways of modelling things,
+there may be a chance to achieve something interoperable and useful!
 
 

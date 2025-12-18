@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS config.case_priority (
 CREATE TABLE IF NOT EXISTS config.event_types (
     id int4 NOT NULL,
     "name" text NOT NULL,
-    CONSTRAINT event_types_pkey PRIMARY KEY (id)
+    CONSTRAINT event_types_pkey PRIMARY KEY (id),
     CONSTRAINT event_types_uniq UNIQUE ("name")
 );
 
@@ -37,8 +37,10 @@ CREATE TABLE IF NOT EXISTS config.event_names (
     CONSTRAINT event_names_name_key UNIQUE (name),
     CONSTRAINT event_names_pkey PRIMARY KEY (id)
 );
-ALTER TABLE config.event_names ADD CONSTRAINT event_names_default_event_type_fkey FOREIGN KEY (default_event_type) REFERENCES config.event_types(id);
-CREATE UNIQUE INDEX net_event_names_name_idx ON config.net_event_names USING btree (name);
+ALTER TABLE config.event_names 
+    ADD CONSTRAINT event_names_default_event_type_fkey 
+    FOREIGN KEY (default_event_type) REFERENCES config.event_types(id);
+CREATE UNIQUE INDEX event_names_name_idx ON config.event_names USING btree (name);
 
 CREATE TABLE IF NOT EXISTS config.lab_locations (
     id int4 NOT NULL,
@@ -47,14 +49,14 @@ CREATE TABLE IF NOT EXISTS config.lab_locations (
     CONSTRAINT lab_locations_uniq UNIQUE ("name")
 );
 
-CREATE TABLE IF NOT EXISTS config.patho_division (
+CREATE TABLE IF NOT EXISTS config.patho_divisions (
     id int4 NOT NULL,
     "name" text NOT NULL,
     CONSTRAINT patho_division_pkey PRIMARY KEY (id),
     CONSTRAINT patho_division_uniq UNIQUE ("name")
 );
 
-CREATE TABLE IF NOT EXISTS config.requisition_type (
+CREATE TABLE IF NOT EXISTS config.requisition_types (
       id int4 NOT NULL,
       "name" text NOT NULL,
       CONSTRAINT requisition_type_pkey PRIMARY KEY (id),
@@ -76,7 +78,12 @@ CREATE TABLE IF NOT EXISTS config.token_types (
     CONSTRAINT token_types_uniq UNIQUE ("name")
 );
 
-
+CREATE TABLE IF NOT EXISTS config.workflow_profiles (
+        id int4 NOT NULL,
+        "name" text NOT NULL,
+        CONSTRAINT case_profile_pkey PRIMARY KEY (id),
+        CONSTRAINT case_profile_uniq UNIQUE ("name")
+);
 
 
 

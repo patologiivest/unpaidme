@@ -1,0 +1,15 @@
+@startuml
+start
+- Accessioning
+- Grossing
+- Processing
+- Embedding
+repeat
+- Sectioning
+- Staining
+- Scanning
+- Microscopy
+repeat while (is conclusive?) is (no) not (yes)
+- Reporting 
+stop 
+@enduml
