@@ -1,30 +1,36 @@
 # Configuration Schema
 
-The purpose of this schema is to store information that should be _customizable_ but is expected to change very **seldom**.
-Most of the table in this schema represent _enumeration types_, i.e. mathematically a pre-defined set of _valid_ values and in most programming languages represented by a descriptive name and implemented by some numeric constant.
-Therefore most of the tables in this schema have the exact same structure, comprising two columns:
-- one numerical (e.g. `int4`) `id` column,
-- one textual `name` column, and
-- respective primary and unique key constraints.
+The purpose of this schema is to store information that is considered configuration/metadata.
+It is intended to be _customizable_ but is expected to change very **seldom** (almost never) after set-up.
+Most of the table in this schema represent _enumeration types_, i.e.  a pre-defined set of _valid_ values.
+Most programming languages implement it as a mapping between a descriptive name and an internal numeric representation.
 
-We are providing sensible default values for each table/enum but feel free to configure your own concepts
-such that they capture your laboratory in the most accurate way possible.
-The following tables may require your attention:
+Therefore, most of the tables in this schema have the exact same structure, comprising two columns:
+- a numerical (e.g. `int4`) `id` column, and
+- a textual `name` column,
+
+together with respective primary and unique key constraints.
+
+We are providing sensible default values for each table/enum, but feel free to configure your own concepts
+such that they capture the nature of _your_ laboratory.
+
+In particular, the following tables _may_ require your attention:
 - [`case_priority`](#case-priority)
 - [`lab_locations`](#lab-locations)
 - [`requisition_type`](#requisition-type)
 - [`workflow_profiles`](#workflow-profiles)
 
 Under certain circumstances, also
-- [`actor_roles`](#actor-roles)
+- [`actor_roles`](#actor-roles),
 - [`block_types`](#block-types),
-- [`slide_types`](#slide-types), as well as 
-- [`event_names`](#event-names)
+- [`slide_types`](#slide-types),
+- [`event_names`](#event-names), as well as
+- [`workstation_types`](#workstation-types) 
 
 might need to be adjusted to your laboratory workflow.
 
-The tables `patho_division`, `token_types`, and `event_types` should almost never be touched as these contain 
-concepts that are assumed universal and equal among different laboratories!
+The tables `patho_division`, `token_types`, and `event_types` should generally not be touched as these contain 
+generic concepts that are assumed universal and equal among different laboratories!
 
 ## Actor Roles
 
@@ -104,14 +110,15 @@ enum EventType {
 ## Event Names
 
 The names of the various activities and events within the pathology workflow.
-In this repository, we provide a pre-designed list of activities/events that we found 
-working our use case. However, feel free to adjust these activites to your workflow and lab.
+We provide a pre-designed list of activities/events that we found to sufficient to model our laboratory workflow.
+However, feel free to adjust these activites to your workflow and lab.
 
-Each event "_name_" has a numeric `id` and a textual description (`name`), just as the other enum-type tables 
-in this schema. Additionally, there is a column `default_event_type` referencing the `EventType` table, 
+The events are defined in [0111_config_events.up.sql](../../schema/migrations/0111_config_events.up.sql)
+and described in greater detail in [Section 3.1](./chapter_3_1.md).
+
+In addition to the default `id` and `name` columns, there is a column `default_event_type` referencing the `EventType` table, 
 which indicates whether the event name describes a proper event (value = `0`) or an actvity (value = `1`). 
 
-The complete list of the event names is found in [Section 3.1](./chapter_3_1.md)
 
 ```sql
 {{#include ../../schema/migrations/0100_config.up.sql:33:42}}
@@ -125,7 +132,7 @@ logically separate your histology and cytology laboratory, the `LabLocations` ta
 to distinguish between them. Thus, the content of this table is mostly up to you. 
 Also, the use of this table is entirely optional.
 
-> **Attention:** The laboratory locations are entirely up to your set-up and therefore 
+> **Attention:** The laboratory locations will depend on your personal use case and therefore 
 > you have to adjust the contents of this table yourself (or simply ignore it).
 
 ```sql
@@ -156,8 +163,8 @@ enum PathoDivision {
 ## Requisition Type
 
 This enum type can be used to distinguish between different types of requistitions,
-i.e. to distinguish between "in-house" (from inside the same hospital), GP, or 
-external requisitions.
+i.e. to distinguish between "in-house" (from inside the same hospital), general practicioners (GPs), or 
+external requisitions (e.g. private laboratories).
 
 > **Attention:** The requisition types may differ between labs and this might be one of the few places in 
 > the `config` schema where you acutally may provide custom values.
@@ -216,13 +223,65 @@ enum TokenType {
 
 ## Workflow Profiles 
 
-The `workflow_profiles` table can be used to configure different types of workflows for cases.
-A common example is the distinction between cases, where grossing is either performed by lab technicians (more generic and standardized procedures) 
-or residents (more complex and adhoc procedures).
-Another example is to distinguish between different "organ groups", i.e. specialization domains of pathologists (gynecology, dermatology,
+> **Attention:** The `workflow_profiles` may be different among laboratories and there need some adjustments. 
+
+`workflow_profiles` allow an additional dimension to distinguish between different types of cases apart 
+from the natural disctinction of pathology divisions.
+For instance, you may want to distinguish between several types of _histology_ cases that require a completely different workflow.
+There could be `regular` cases that undergo the normal stages of the histology process,
+a `frozen_section` on the other-hand would be short-tracked directly to _sectioning_ via cyrotome with an immediate
+preliminary microscopic analysis flowing into the regular process (with a lower priority then), and finally
+a `consultation` may come from another laboratory which already produced slides such that the case can go directly
+to microscopic analysis.
+Since these three types of cases behave rather differently, it is reasonable to distinguish between them when creating reports.
+
+Workflow profiless are meant to be used othogonal (depending on your reporting needs[^reporting_needs]), i.e.
+you may define multiple classes of profiles.
+One use case may to definedifferent "organ groups", i.e. specialization domains of pathologists (gynecology, dermatology,
 neurology, etc.).
+
+[^reporting_needs]: This will be discussed in a later chapter.
+
+```rust
+enum WorkflowProfiles {
+    REGULAR = 0,
+    FROZEN_SECTION = 1,
+    CONSULTATION = 3,
+    // add more profiles when needed
+}
+```
 
 ```sql
 {{#include ../../schema/migrations/0100_config.up.sql:81:86}}
 ```
 
+## Workstation Types
+
+Finally, one may distinguish between different types of _workstations_:
+Some activities in the process may require a specific workstation. 
+Thus, workstations represent a _resource_ and there might be conflict around 
+resources, which is an important aspect to take into account in a simulation model.
+
+```rust
+enum WorkstationType {
+    DESKTOP_COMPUTER = 0,
+    REGISTRATION_DESK = 1,
+    GROSSING_STATION = 2,
+    PROCESSING_MACHINE = 3,
+    CYTOLOGY_PROCESSOR = 4,
+    EMBEDDING_STATION = 5,
+    MICROTOME = 6,
+    STAINING_MACHINE = 7, 
+    IHC_STAINING_MACHINE = 8,
+    SCANNER = 9,
+    CRYOTOME = 10,
+    PCR_MACHINE = 11,
+    AUTOMATIC_EMBEDDING_MACHINE = 12,
+    SECTIONING_ROBOT = 13,
+    // ...
+}
+```
+
+```sql
+{{#include ../../schema/migrations/0100_config.up.sql:89:95}}
+```

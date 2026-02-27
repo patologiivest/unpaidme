@@ -13,8 +13,8 @@ INSERT INTO config.case_priority (id, "name") VALUES(1, 'PRIORITIZED');
 -- ... depends on your lab
 
 -- Requisition Types
-INSERT INTO config.requisition_type (id, "name") VALUES(0, 'INTERNAL');
-INSERT INTO config.requisition_type (id, "name") VALUES(1, 'EXTERNAL');
+INSERT INTO config.requisition_types (id, "name") VALUES(0, 'INTERNAL');
+INSERT INTO config.requisition_types (id, "name") VALUES(1, 'EXTERNAL');
 
 
 -- # Possibly, need to be adjusted:
@@ -39,22 +39,39 @@ INSERT INTO config.slide_types (id, "name") VALUES(1, 'BIG');
 -- workflow profiles
 -- Example content: adjust to your needs
 -- different grossing workflows, as an example ...
-INSERT INTO config.workflow_profiles (id, "name") VALUES (0, "STANDARD"); 
-INSERT INTO config.workflow_profiles (id, "name") VALUES (1, "RESIDENT");
-INSERT INTO config.workflow_profiles (id, "name") VALUES (2, "FROZEN");
+INSERT INTO config.workflow_profiles (id, "name") VALUES (0, 'REGULAR'); 
+INSERT INTO config.workflow_profiles (id, "name") VALUES (1, 'FRONZEN_SECTION'); 
+INSERT INTO config.workflow_profiles (id, "name") VALUES (2, 'CONSULTATION');
 -- different subspecialities, just as an example...
-INSERT INTO config.workflow_profiles (id, "name") VALUES (3, "DERM"); 
-INSERT INTO config.workflow_profiles (id, "name") VALUES (4, "BONE");
-INSERT INTO config.workflow_profiles (id, "name") VALUES (5, "BREAST");
-INSERT INTO config.workflow_profiles (id, "name") VALUES (6, "CARDIO");
-INSERT INTO config.workflow_profiles (id, "name") VALUES (7, "DERMA");
-INSERT INTO config.workflow_profiles (id, "name") VALUES (8, "GASTRO");
-INSERT INTO config.workflow_profiles (id, "name") VALUES (9, "URO");
-INSERT INTO config.workflow_profiles (id, "name") VALUES (10, "HEMATO");
-INSERT INTO config.workflow_profiles (id, "name") VALUES (11, "NEURO");
-INSERT INTO config.workflow_profiles (id, "name") VALUES (12, "PULMONARY");
-INSERT INTO config.workflow_profiles (id, "name") VALUES (13, "RENAL");
+-- INSERT INTO config.workflow_profiles (id, "name") VALUES (3, 'DERM'); 
+-- INSERT INTO config.workflow_profiles (id, "name") VALUES (4, 'BONE');
+-- INSERT INTO config.workflow_profiles (id, "name") VALUES (5, 'BREAST');
+-- INSERT INTO config.workflow_profiles (id, "name") VALUES (6, 'CARDIO');
+-- INSERT INTO config.workflow_profiles (id, "name") VALUES (7, 'DERMA');
+-- INSERT INTO config.workflow_profiles (id, "name") VALUES (8, 'GASTRO');
+-- INSERT INTO config.workflow_profiles (id, "name") VALUES (9, 'URO');
+-- INSERT INTO config.workflow_profiles (id, "name") VALUES (10, 'HEMATO');
+-- INSERT INTO config.workflow_profiles (id, "name") VALUES (11, 'NEURO');
+-- INSERT INTO config.workflow_profiles (id, "name") VALUES (12, 'PULMONARY');
+-- INSERT INTO config.workflow_profiles (id, "name") VALUES (13, 'RENAL');
 
+
+-- workstation_types 
+-- adjust when needed
+INSERT INTO config.workstation_types(id, "name") VALUES (0, 'DESKTOP_COMPUTER');
+INSERT INTO config.workstation_types(id, "name") VALUES (1, 'REGISTRATION_DESK');
+INSERT INTO config.workstation_types(id, "name") VALUES (2, 'GROSSING_STATION');
+INSERT INTO config.workstation_types(id, "name") VALUES (3, 'PROCESSING_MACHINE');
+INSERT INTO config.workstation_types(id, "name") VALUES (4, 'CYTOLOGY_PROCESSOR');
+INSERT INTO config.workstation_types(id, "name") VALUES (5, 'EMBEDDING_STATION');
+INSERT INTO config.workstation_types(id, "name") VALUES (6, 'MICROTOME');
+INSERT INTO config.workstation_types(id, "name") VALUES (7, 'STAINING_MACHINE');
+INSERT INTO config.workstation_types(id, "name") VALUES (8, 'IHC_STAINING_MACHINE');
+INSERT INTO config.workstation_types(id, "name") VALUES (9, 'SCANNER');
+INSERT INTO config.workstation_types(id, "name") VALUES (10, 'CRYOTOME');
+INSERT INTO config.workstation_types(id, "name") VALUES (11, 'PCR_MACHINE');
+INSERT INTO config.workstation_types(id, "name") VALUES (12, 'AUTOMATIC_EMBEDDING_MACHINE');
+INSERT INTO config.workstation_types(id, "name") VALUES (13, 'SECTIONING_ROBOT');
 
 -- # BUILTIN
 -- The following you will most certainly not touch!
@@ -76,9 +93,8 @@ INSERT INTO config.token_types (id, "name") VALUES(5, 'REPORT');
 INSERT INTO config.token_types (id, "name") VALUES(6, 'OTHER');
 
 
-INSERT INTO config.patho_division (id, "name") VALUES(0, 'AUTOPSY');
-INSERT INTO config.patho_division (id, "name") VALUES(1, 'HISTOLOGY');
-INSERT INTO config.patho_division (id, "name") VALUES(2, 'CYTOLOGY');
-INSERT INTO config.patho_division (id, "name") VALUES(3, 'MOLECULAR');
-INSERT INTO config.patho_division (id, "name") VALUES(4, 'FORENSIC');
-
+INSERT INTO config.patho_divisions (id, "name") VALUES(0, 'AUTOPSY');
+INSERT INTO config.patho_divisions (id, "name") VALUES(1, 'HISTOLOGY');
+INSERT INTO config.patho_divisions (id, "name") VALUES(2, 'CYTOLOGY');
+INSERT INTO config.patho_divisions (id, "name") VALUES(3, 'MOLECULAR');
+INSERT INTO config.patho_divisions (id, "name") VALUES(4, 'FORENSIC');

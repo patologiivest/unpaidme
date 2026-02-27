@@ -26,11 +26,53 @@ The following, figure summarizes a simplified view of this initial data model.
 
 <figure style="display: flex; align-items: center; flex-direction: column">
     <img src="./images/svg/1_patho_domain_iter1.svg">
-    <figcaption style="font-size: 1.2rem; font-style: italic; color: #999" >Fig 1: Pathology Domain Model: First Iteration</figcaption>
+    <figcaption style="font-size: 1.2rem; font-style: italic; color: #999" ><strong>Fig 1:</strong> Pathology Domain Model: First Iteration</figcaption>
 </figure>
 
 
 ## Process Model
 
-The process inside the laboratory can be described with a process model. 
-In our investigations, _petri nets_ turned out to be a very fitting process modeling technique to capture this laboratory workflow.
+
+## Histology
+
+Histology, i.e. the analysis of human tissues stands for the gross share of all activities within the laboratory 
+since it involves several activities with manual human labor.
+A simplified depiction of this process is shown in Fig 2.
+
+
+<figure style="display: flex; align-items: center; flex-direction: column">
+    <img src="./images/svg/1_patho_process_iter1.svg">
+    <figcaption style="font-size: 1.2rem; font-style: italic; color: #999" >Fig 2: Histology Process</figcaption>
+</figure>
+
+- When a specimen arrives at the pathology laboratory, it is first assigned
+to a case (_“Accessioning”_), i.e. various metadata (patient data, information about the sample
+type, clinical inquiries) are aggregated in the LIS, a priority is
+assigned, and the specimens are labelled with a lab-internal identifier. In most modern labs, this
+identifier has the form of an industrial barcode, which leverages electronic tracing throughout
+the process
+- When the specimen has been immersed in a fixative solution (e.g., formalin) for
+a sufficient amount of time, it can be delivered to the next stage of the process: _“Grossing”_.
+Here, the tissue is examined on a macroscopic level (i.e., “with the naked eye”) for abnormal
+findings and marked. In case of larger specimens, slices with findings of interest are selected
+from the specimen.
+- Tissues are placed in a cassette and delivered to _“Processing”_. This step is
+performed by a specialized machine that automates dehydration, clearing and infiltration of
+the tissue with paraffin wax.
+- Afterwards, the processed tissue is taken to _“Embedding”_. This
+means that it is placed in molten paraffin wax to form a `block`. 
+- The cooled-down
+paraffin block is mounted on a Microtome, which allows cutting very thin slices (∼ 3-4𝜇𝑚) from
+the tissue-paraffin-block (_"Sectioning"_). 
+- The slices are placed on a glass slide and delivered to the “Staining”
+process step. Here, the slide is put through different chemicals, which amplify contrasts and
+highlight certain biological structures, e.g. hematoxylin stains cell nuclei blue and eosin stains
+cell bodies (cytoplasm) red. Finally, a protective cover-slip is mounted on top of the stained
+tissue slice forming the `slide`.
+- With the advent of ditial pathology, the stained slides are now _scanned_ with microscopic resolution. 
+- Thus, in what follows (_"Microscopy"_), the pathologist assesses all the slides of the case to write a diagnostic report.
+In some cases, it is necessary to order additional stained slides (e.g. using "immunohistochemistry (IHC)"). In that case,
+lab technicians retrieve the respective block, create another section, create a new slide.
+- Eventually, the pathologist answers the report with a conclusive diagnosis.
+
+

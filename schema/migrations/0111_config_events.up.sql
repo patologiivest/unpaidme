@@ -12,8 +12,6 @@ INSERT INTO config.event_names (id, "name", default_event_type) VALUES(27, 'cons
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(30, 'grossing', 1);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(31, 'specimenContainerArchived', 0);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(32, 'specimenContainerRetrieved', 0);
-INSERT INTO config.event_names (id, "name", default_event_type) VALUES(33, 'grossingKidney', 1);
-INSERT INTO config.event_names (id, "name", default_event_type) VALUES(34, 'grossingIHC', 1);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(35, 'blockPrinted', 0);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(39, 'dictationTranscription', 1);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(40, 'processing', 1);
@@ -22,13 +20,8 @@ INSERT INTO config.event_names (id, "name", default_event_type) VALUES(42, 'proc
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(43, 'flowCytometry', 1);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(50, 'manualEmbedding', 1);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(51, 'automaticEmbedding', 1);
-INSERT INTO config.event_names (id, "name", default_event_type) VALUES(59, 'Koordinering', 1);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(60, 'manualSectioning', 1);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(61, 'automaticSectioning', 1);
-INSERT INTO config.event_names (id, "name", default_event_type) VALUES(62, 'sectioningIHC', 1);
-INSERT INTO config.event_names (id, "name", default_event_type) VALUES(63, 'sectioningMolecular', 1);
-INSERT INTO config.event_names (id, "name", default_event_type) VALUES(64, 'sectioningKidney', 1);
-INSERT INTO config.event_names (id, "name", default_event_type) VALUES(65, 'sectioningNeurology', 1);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(66, 'slidePrinted', 0);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(67, 'blockArchived', 0);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(68, 'blockRetrieved', 0);
@@ -37,8 +30,6 @@ INSERT INTO config.event_names (id, "name", default_event_type) VALUES(70, 'auto
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(71, 'manualStaining', 1);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(72, 'stainingIHC', 1);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(73, 'molecularAnalysis', 1);
-INSERT INTO config.event_names (id, "name", default_event_type) VALUES(74, 'stainingKidney', 1);
-INSERT INTO config.event_names (id, "name", default_event_type) VALUES(75, 'stainingNeurology', 1);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(80, 'caseAssigned', 0);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(81, 'caseReassgined', 0);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(82, 'caseCoResponsibleAssigned', 0);
@@ -47,8 +38,8 @@ INSERT INTO config.event_names (id, "name", default_event_type) VALUES(87, 'slid
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(88, 'slideRetrieved', 1);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(89, 'slideDestroyed', 1);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(90, 'microscopicAnalysis', 1);
-INSERT INTO config.event_names (id, "name", default_event_type) VALUES(91, 'ihcRequested', 0);
-INSERT INTO config.event_names (id, "name", default_event_type) VALUES(92, 'specialStainRequested', 0);
+INSERT INTO config.event_names (id, "name", default_event_type) VALUES(91, 'additionalSlidesRequested', 0);
+INSERT INTO config.event_names (id, "name", default_event_type) VALUES(92, 'additionalAnalysisRequested', 0);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(93, 'additionalGrossingRequested', 0);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(94, 'molpatRequested', 0);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(95, 'electronMicroscopyRequested', 0);
@@ -60,6 +51,7 @@ INSERT INTO config.event_names (id, "name", default_event_type) VALUES(100, 'cas
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(101, 'caseReopened', 0);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(102, 'reportAugmented', 0);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(103, 'reportCorrected', 0);
+INSERT INTO config.event_names (id, "name", default_event_type) VALUES(106, 'archivedSlideRescanRequest', 0);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(107, 'archivedSlideRetrievalRequested', 0);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(108, 'archivedBlockRetrievalRequested', 0);
 INSERT INTO config.event_names (id, "name", default_event_type) VALUES(110, 'requisitionAnswered', 0);

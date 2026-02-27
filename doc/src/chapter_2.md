@@ -3,10 +3,9 @@
 The data model is implemented in the form of a database schema.
 The schema is provided as `CREATE TABLE`-statements using the PostgreSQL dialect.
 
-
 ## Structure
 
-The database structure is divided into three schemas:
+The database structure is divided into three main schemas:
 
 - `config`
 - `master`
@@ -16,23 +15,12 @@ The `config` schema contains metadata, which "almost never" changes.
 Usually, the contents of this schema are modified upon the initial installation and not any more afterwards.
 The `master` schema contains any other kind of metadata, which may change in between.
 This can for instance be the catalog of classified specimen types etc.
-Finally, the `trans` schema contains all the _transactional_ data.
+The `trans` schema contains all the _transactional_ data.
+Moreover, there is a historical variant of the transactional schema `hist`
+and users of UNPAIDME may create arbitrary (materialized) views in the `reports` schema depending on their use cases.
 
 
-## SQL Datatypes 
 
-The main difference among database systems is their support and naming of column data types.
-Possibly, the SQL schema definitions in this repository can (more or less) easily be converted to 
-a different databse system dialect (such as T-SQL for Microsoft SQL server, Oracle SQL and others).
-As the definition in this repository are based on PostgreSQL, it may be worthwile to quickly summarize 
-data types that will be used:
-
-- `int4` signed integer values that can be represented with four bytes (32 bits). It corresponds to the `integer` 
-type in most programming languages, and will be used for ids (of entities where there are expected to be fewer of) and most numeric values.
-- `int8`: signed integer values that can be represented with eight bytes (64 bits). It corresponds to the `long integer` type of most programming languages and it will be predominantly used for id's.
-- `text`: PostgreSQL has a data type supporting UTF-8 strings of arbitrary length (The usage of the `varchar` type, which is capped by a max length, is discouraged in PostgreSQL since it is less efficient).
-- `float8`: IEEE754 floating point values represented with 64 bits.
-- `timestamptz`: Milliseconds since the UNIX epoch equipped with a time zone indicator.
 
 
 ## Design Decisions

@@ -86,6 +86,13 @@ CREATE TABLE IF NOT EXISTS config.workflow_profiles (
 );
 
 
+CREATE TABLE IF NOT EXISTS config.workstation_types (
+    id int4 NOT NULL,
+    "name" text NOT NULL,
+    CONSTRAINT workstation_types_pkey PRIMARY KEY (id),
+    CONSTRAINT workstation_types_uniq UNIQUE ("name")
+);
+
 
 
 
