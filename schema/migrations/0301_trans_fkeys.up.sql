@@ -25,7 +25,7 @@ ALTER TABLE trans.slides ADD CONSTRAINT slides_stain_type_fkey FOREIGN KEY (stai
 
 -- trans.analyses foreign keys
 ALTER TABLE trans.analyses ADD CONSTRAINT analyses_case_id_fkey FOREIGN KEY (case_id) REFERENCES trans.cases(id) ON DELETE CASCADE;
-ALTER TABLE trans.analyses ADD CONSTRAINT analyses_coding_fkey FOREIGN KEY (analysis_type) REFERENCES master.analysis_codes(id) ON DELETE SET NULL;
+ALTER TABLE trans.analyses ADD CONSTRAINT analyses_coding_fkey FOREIGN KEY (analysis_type) REFERENCES master.analysis_methods(id) ON DELETE SET NULL;
 
 -- trans.case_codings foreign keys
 ALTER TABLE trans.case_codings ADD CONSTRAINT case_codings_case_id_fkey FOREIGN KEY (case_id) REFERENCES trans.cases(id) ON DELETE CASCADE;

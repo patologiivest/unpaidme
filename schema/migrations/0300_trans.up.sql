@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS trans.analyses (
     CONSTRAINT analyses_legacy_id_key UNIQUE (legacy_id),
     CONSTRAINT analyses_pkey PRIMARY KEY (id)
 );
-CREATE UNIQUE INDEX analyses_legacy_id_idx ON trans.analyses;
+CREATE UNIQUE INDEX analyses_legacy_id_idx ON trans.analyses(legacy_id);
 -- ANCHOR_END: analyses
 
 

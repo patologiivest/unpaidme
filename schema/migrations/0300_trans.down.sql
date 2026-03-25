@@ -1,0 +1,16 @@
+DROP TABLE IF EXISTS trans.events CASCADE;
+DROP TABLE IF EXISTS trans.analyses CASCADE;
+DROP TABLE IF EXISTS trans.specimen_containers CASCADE;
+DROP TABLE IF EXISTS trans.slides CASCADE;
+DROP TABLE IF EXISTS trans.blocks CASCADE;
+DROP TABLE IF EXISTS trans.cases CASCADE;
+DROP TABLE IF EXISTS trans.case_codings CASCADE;
+DROP TABLE IF EXISTS trans.case_profiles CASCADE;
+DROP TABLE IF EXISTS trans.patients CASCADE;
+DROP SEQUENCE trans.patients_seq ;
+DROP SEQUENCE trans.cases_seq ;
+DROP SEQUENCE trans.specimen_containers_seq ;
+DROP SEQUENCE trans.blocks_seq ;
+DROP SEQUENCE trans.slides_seq ;
+DROP SEQUENCE trans.analyses_seq ;
+DROP SCHEMA IF EXISTS trans;

@@ -1,4 +1,22 @@
-# Event Names
+# Event Log
+
+> An _event log_ is defined as a _multiset of cases_. 
+> A _case_ is an odered sequence of _events_. 
+
+## Activity Lifecycle
+
+The [XES standard](https://www.tf-pm.org/resources/xes-standard/about-xes/standard-extensions/lifecycle/standard)
+comprises an extension for the [_activity lifecyle_](https://www.tf-pm.org/resources/xes-standard/about-xes/standard-extensions/lifecycle/standard),
+which defines a sophisticated state machine model:
+
+![XES activity model](./images/png/3_1_xes_activity_model.png)
+
+As demonstrated by the default content of the [`config.event_types`](./chapter_1_1.md#event-types) table, we are using 
+a simplified activity model:
+
+![Simplified Activity Model](./images/svg/activity_state_machine.svg)
+
+## Event Names
 
 As mentioned earlier, this data model also comes with a proposal for the pathology process.
 In the first place, there is a list of _names_ for events and activities.
@@ -66,3 +84,8 @@ in what order this activity/event usually appears in the process.
 | 110 | requisitionAnswered             |                  Evt|
 
 
+## Object-centric Logs
+
+The pathology domain actually provides a use case for so-called _object-centric event logs_.
+The [OCEL standard](https://www.ocel-standard.org/) represents a working draft for a common format,
+which will subsitute XES for object-centric logs.
