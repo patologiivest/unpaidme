@@ -10,3 +10,8 @@
     - [Historical Schema](./chapter_2_4.md)
 - [Process](./chapter_3.md)
     - [Event Names](./chapter_3_1.md)
+- [Use Cases](./chapter_4.md)
+    - [#1 Live View](./chapter_4_1.md)
+    - [#2 States and Arrears](./chapter_4_2.md)
+    - [#3 Specimen Type Analysis](/)
+    - [#4 Event Log Export](/)

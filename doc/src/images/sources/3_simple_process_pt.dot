@@ -1,0 +1,31 @@
+digraph G {
+   #layout=neato
+   #1 [shape=box, fillcolor=black, style=filled, width=0.3, xlabel="Start", labelloc=t];
+   #3 [shape=box, fillcolor=black, style=filled, width=0.3, xlabel="Stop"];
+   #4 [shape=box, fillcolor=white, style=filled, label="", width=0.6, xlabel="Do sth.", labelfontname="sans-serif"];
+   
+   e_0 [shape=box, fillcolor=black, style=filled, width=0.3, xlabel="Specimen taken", labelloc=t];
+   
+   e_20 [shape=box, fillcolor=white, style=filled, label="", width=0.6, xlabel="Accessioning", labelfontname="sans-serif"];
+   e_30 [shape=box, fillcolor=white, style=filled, label="", width=0.6, xlabel="Grossing", labelfontname="sans-serif"];
+   e_40 [shape=box, fillcolor=white, style=filled, label="", width=0.6, xlabel="Processing", labelfontname="sans-serif"];
+   e_50 [shape=box, fillcolor=white, style=filled, label="", width=0.6, xlabel="Embedding", labelfontname="sans-serif"];
+   e_60 [shape=box, fillcolor=white, style=filled, label="", width=0.6, xlabel="Sectioning", labelfontname="sans-serif"];
+   e_70 [shape=box, fillcolor=white, style=filled, label="", width=0.6, xlabel="Staining", labelfontname="sans-serif"];
+   e_90 [shape=box, fillcolor=white, style=filled, label="", width=0.6, xlabel="Microscopy", labelfontname="sans-serif"];
+
+
+   # remaining 
+   in_20 [shape=circle, label=""];
+   in_30 [shape=circle, label=""];
+   in_40 [shape=circle, label=""];
+   
+   
+   e_0 -> in_20;
+   in_20 -> e_20;
+   e_20 -> in_30;
+   in_30 -> e_30;
+   e_30 -> in_40;
+   in_40 -> e_40;
+
+}

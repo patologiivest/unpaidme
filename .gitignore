@@ -21,4 +21,8 @@ Cargo.lock
 
 # location specific schema modifications
 schema/migrations/*bergen.up.sql
+temp
 
+/data/examples/.ipynb_checkpoints
+/scripts/model.json
+/scripts/specimen_analysis_report.pdf
