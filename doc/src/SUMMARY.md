@@ -13,5 +13,5 @@
 - [Use Cases](./chapter_4.md)
     - [#1 Live View](./chapter_4_1.md)
     - [#2 States and Arrears](./chapter_4_2.md)
-    - [#3 Specimen Type Analysis](/)
-    - [#4 Event Log Export](/)
+    - [#3 Specimen Type Analysis]()
+    - [#4 Event Log Export]()
