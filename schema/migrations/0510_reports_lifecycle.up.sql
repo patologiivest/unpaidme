@@ -56,10 +56,13 @@ SELECT
         WHEN MIN(happened_at) FILTER (WHERE event_name = 80  AND event_type = 0) IS NOT NULL THEN 'ASSIGNED'
         WHEN MIN(happened_at) FILTER (WHERE event_name = 30  AND event_type = 2) IS NOT NULL THEN 'GROSSED'
         WHEN MIN(happened_at) FILTER (WHERE event_name = 20  AND event_type = 2) IS NOT NULL THEN 'ACCESSIONED'
-        WHEN MIN(happened_at) FILTER (WHERE event_name = 10  AND event_type = 0) IS NOT NULL THEN 'NOTIFIED'
         WHEN MIN(happened_at) FILTER (WHERE event_name = 0   AND event_type = 0) IS NOT NULL THEN 'SAMPLED'
+        WHEN MIN(happened_at) FILTER (WHERE event_name = 10  AND event_type = 0) IS NOT NULL THEN 'NOTIFIED'
         ELSE 'UNKNOWN'
-    END AS current_phase
+    END AS current_phase,
+    MAX(happened_at) FILTER(
+        WHERE event_name IN (0, 10, 20, 30, 80, 98, 99, 102, 103, 100, 110)
+    ) as last_activity_at
 FROM trans.events
 WHERE token_type = 0
 GROUP BY case_id;
@@ -162,14 +165,23 @@ CREATE INDEX slide_lifecycle_slide_caseid_idx
     ON reports.slide_lifecycle (case_id);
 -- ANCHOR_END: slide
 
-
--- TODO: 
-CREATE VIEW reports.case_arrears AS 
+-- ANCHOR_START: case_arrears
+-- TODO: start with a proper base set of cases: choose division, workflow_profile, other criteria (not testpatient etc.)
+CREATE OR REPLACE VIEW reports.case_arrears AS 
 SELECT 
-    case_id, 
+    r.case_id, 
     patho_division,
-    priority
+    priority,
+    r.current_phase,
+    r.last_activity_at,
+    r.sampled_at,
+    r.accessioned_at,
+    r.grossed_at,
+    r.assigned_at
 FROM reports.case_lifecycle r 
+INNER JOIN trans.cases c on r.case_id = c.id 
 WHERE 
     (r.accessioned_at IS NOT NULL AND r.accessioned_at < now())
-    AND (r.first_report_at IS NULL OR r.first_report_at > now());
+    AND (r.first_report_at IS NULL OR r.first_report_at > now())
+order by r.accessioned_at ;
+-- ANCHOR_END: case_arrears 
