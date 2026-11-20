@@ -16,15 +16,17 @@ However, when it comes to _event data_ in general and _pathology event data_ in 
 Interestingly, due to legal regulations, most suppliers of LIS systems are obliged to record everything that a user 
 does within the system in order to allow for revision and tracing (and by projection capture most of what happens in the 
 lab as well).
-But, there is common format in which these tracing/logging information must be recorded and stored. 
-This data model is an attempt to create this missing format and data model in a bottom-up approach.
+But, there is **no** common format in which these tracing/logging information must be recorded or stored. 
+This data model is an attempt to create this missing format and data model, following bottom-up approach, i.e. adding 
+new concepts only when needed.
 
 
 ## How to use this repository?
 
 The contents of this repository, i.e. database schemas, scripts and tools are freely available under the MIT license.
-Feel free to use it for your own use cases and feel free to contribute back to this repository and it's proposed data models:
-A standard is only truly useful if it is adopted by as many as possible.
+Feel free to use it for your own use cases and feel free to contribute back to this repository and it's proposed data models.
+
+> A standard is only truly useful if it is adopted by as many as possible.
 By learning from one another and seeing how others have modelled the "same" ideas, 
 there may be a chance to achieve something interoperable and useful!
 

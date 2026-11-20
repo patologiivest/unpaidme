@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Specimen type block-count model",
+  "description": "Output of specimen_analysis.py: per specimen type id, its share of cases (overall and per weekday) and the best-fitting block-count-per-case distribution.",
+  "type": "object",
+  "propertyNames": {
+    "pattern": "^[0-9]+$"
+  },
+  "additionalProperties": {
+    "type": "object",
+    "required": [
+      "name",
+      "frequency",
+      "dow_frequency",
+      "distribution",
+      "scipy",
+      "params",
+      "support"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "type": "string",
+        "description": "Location code and procedure code."
+      },
+      "frequency": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1,
+        "description": "Share of cases among the reported specimen types; sums to 1 over all entries."
+      },
+      "dow_frequency": {
+        "type": "object",
+        "description": "Share of cases per ISO weekday (1 = Monday ... 5 = Friday), shrunk toward frequency; for each weekday it sums to 1 over all entries.",
+        "propertyNames": {
+          "enum": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ]
+        },
+        "required": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+        ],
+        "additionalProperties": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "distribution": {
+        "description": "Distribution family name, see DISCRETE and CONTINUOUS in specimen_analysis.py.",
+        "enum": [
+          "Poisson",
+          "Negative Binomial",
+          "Geometric",
+          "Log-Series",
+          "Zipf",
+          "Yule-Simon",
+          "Normal",
+          "Lognormal",
+          "Gamma",
+          "Weibull",
+          "Exponential",
+          "Pareto",
+          "Lomax",
+          "GenPareto",
+          "Log-logistic"
+        ]
+      },
+      "scipy": {
+        "type": "string",
+        "description": "Name of the scipy.stats distribution, e.g. nbinom or lognorm."
+      },
+      "params": {
+        "type": "object",
+        "description": "scipy.stats parameters by name. Continuous families also carry loc and scale and are discretised as P(k) = F(k + 0.5) - F(k - 0.5).",
+        "additionalProperties": {
+          "type": "number"
+        }
+      },
+      "support": {
+        "type": "array",
+        "items": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minItems": 2,
+        "maxItems": 2,
+        "description": "Smallest and largest observed block count; synthetic block counts stay within it."
+      }
+    }
+  }
+}
