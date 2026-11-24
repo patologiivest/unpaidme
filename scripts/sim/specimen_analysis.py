@@ -12,7 +12,7 @@
 # ]
 # ///
 """Specimen type analysis: per histology specimen type, arrival seasonality, yearly volume trend
-and block-count distribution fits. Writes a PDF report and a model.json with, per specimen type,
+and block-count distribution fits. Writes a PDF report and a specimen_model.json with, per specimen type,
 its share of cases (overall and per weekday) and the best-fitting block-count distribution.
 
 Connection via the standard libpq variables PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE
@@ -91,6 +91,7 @@ from trans.cases c
 join trans.blocks b on b.case_id = c.id
 join reports.case_lifecycle r on r.case_id = c.id
 where r.accessioned_at is not null
+  and c.specimen_type is not null
 group by c.id, c.specimen_type, r.accessioned_at::date
 """
 
@@ -269,7 +270,7 @@ def main() -> None:
     parser.add_argument("--pseudo-count", type=float, default=250,
                         help="weekday shares: how many cases' worth to pull toward the overall share")
     parser.add_argument("--output", type=Path, default=Path("specimen_analysis_report.pdf"))
-    parser.add_argument("--model-json", type=Path, default=Path("model.json"))
+    parser.add_argument("--model-json", type=Path, default=Path("specimen_model.json"))
     args = parser.parse_args()
 
     load_dotenv()
@@ -277,6 +278,9 @@ def main() -> None:
     with adbc_driver_postgresql.dbapi.connect("postgresql://") as conn:  # libpq reads the PG* env vars
         types = pd.read_sql_query(SPECIMEN_TYPES_QUERY, conn)
         cases = pd.read_sql_query(CASES_QUERY, conn)
+    # Nullable integer columns come back as float64 from read_sql_query; pin the ids to int64.
+    types = types.astype({"specimen_id": "int64"})
+    cases = cases.astype({"specimen_id": "int64", "block_count": "int64"})
     cases["registration_date"] = pd.to_datetime(cases.registration_date)
     print(f"Loaded {len(cases):,} cases with {cases.block_count.sum():,} blocks, "
           f"{cases.specimen_id.nunique()} specimen types, accessioned "

@@ -8,14 +8,14 @@
 # ]
 # ///
 """Synthetic arrivals: combines a daily arrival count series (arrivals.py) with the specimen type
-model (model.json from specimen_analysis.py) into one row per synthetic case:
+model (specimen_model.json from specimen_analysis.py) into one row per synthetic case:
 requisition_id, reg_date, specimen_type, no_blocks.
 
 Each day's arrivals are split over specimen types by the weekday shares in the model, and each
 case draws its block count from its specimen type's fitted distribution, restricted to the
 block counts observed for that type.
 
-    uv run synthetic_arrivals.py --arrivals arrivals.csv --model model.json --column cnt_hi --seed 1
+    uv run synthetic_arrivals.py --arrivals arrivals.csv --model specimen_model.json --column cnt_hi --seed 1
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ def synthesize(arrivals: pd.DataFrame, column: str, model: dict, rng: np.random.
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--arrivals", type=Path, default=Path("arrivals.csv"), help="output of arrivals.py")
-    parser.add_argument("--model", type=Path, default=Path("model.json"), help="output of specimen_analysis.py")
+    parser.add_argument("--model", type=Path, default=Path("specimen_model.json"), help="output of specimen_analysis.py")
     parser.add_argument("--column", default="cnt", help="arrival count column: cnt, or cnt_lo/cnt_hi for scenarios")
     parser.add_argument("--seed", type=int)
     parser.add_argument("--output", type=Path, default=Path("synthetic_arrivals.csv"), help=".csv or .parquet")
