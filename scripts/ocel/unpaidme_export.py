@@ -8,13 +8,16 @@
 #     "python-dotenv",
 # ]
 # ///
-"""Export the UNPAIDME event log (trans.events + trans/hist objects) as an OCEL 2.0 log.
+"""Export the UNPAIDME event log (trans.events + trans/hist objects) as OCEL 2.0 and/or XES.
 
 Output formats, chosen by the extension of each -o/--output (several may be given):
   *.ocel.zip                      OCEL 2.1 bundled Parquet (recommended: compact, typed, columnar)
   *.json, *.jsonocel (+ .gz)      OCEL 2.0 JSON, validates against ocel2.schema.json
+  *.xes, *.xes.gz                 XES (IEEE 1849), one trace per case, validates against the official XSD
+  *.csv, *.parquet                the same XES log as a flat event table (case:concept:name, concept:name,
+                                  time:timestamp, lifecycle:transition, org:resource, ...; case:* = trace attrs)
 
-Mapping (see context.md):
+OCEL mapping (see context.md):
   event type      = config.event_names.name; lifecycle/revision/lab_location as event attributes
   object types    = case, container, block, slide, analysis (trans.*), actor, workstation (master.*)
   E2O             = case ('case'), the token if not the case ('block', 'slide', ...),
@@ -22,14 +25,21 @@ Mapping (see context.md):
   O2O             = container/block/analysis -'part of'-> case, slide -'cut from'-> block,
                     slide -'part of'-> case, case -'responsible actor'-> actor
   object changes  = hist.* versions (SCD-2) become timed attribute values
-Patients are never exported.
+XES mapping:
+  trace           = case (concept:name = case id), current case attributes + container/block/slide/analysis counts
+  events          = case-level events 1:1; block/slide/... events merged per activity into episodes
+                    (overlapping or <= --merge-gap apart), with token_type and token_count
+  attributes      = concept:name, time:timestamp, lifecycle:transition (standard model), org:resource (actor),
+                    org:role (role at event time), identity:id, workstation, lab_location, revision
+Patients are never exported. Names/ids/hashes follow --names and --hash-ids in all formats.
 
 Connection via PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE (also read from a .env file) or --dsn.
 
-    uv run unpaidme_ocel.py -o histo_jan.ocel.zip --from 2024-01-01 --to 2024-02-01 --division HISTOLOGY
-    uv run unpaidme_ocel.py -o sample.json.gz --sample 500 --seed 1 --names all --hash-ids
-    uv run unpaidme_ocel.py --dry-run --from 2024-01-01 --to 2025-01-01
-    uv run unpaidme_ocel.py -o year.ocel.zip --from 2024-01-01 --to 2025-01-01 --batch-size   # low memory
+    uv run unpaidme_export.py -o histo_jan.ocel.zip --from 2024-01-01 --to 2024-02-01 --division HISTOLOGY
+    uv run unpaidme_export.py -o sample.json.gz --sample 500 --seed 1 --names all --hash-ids
+    uv run unpaidme_export.py --dry-run --from 2024-01-01 --to 2025-01-01
+    uv run unpaidme_export.py -o year.ocel.zip --from 2024-01-01 --to 2025-01-01 --batch-size   # low memory
+    uv run unpaidme_export.py -o histo.xes.gz -o histo.parquet --division HISTOLOGY --merge-gap 1h
 """
 
 from __future__ import annotations
@@ -41,6 +51,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 import sys
 import tempfile
 import time
@@ -110,7 +121,7 @@ MASTER_NAME_SQL = {
               FROM master.{t} m LEFT JOIN master.code_values cv ON cv.id = m.coding"""
        for t in ("staining_methods", "fixation_methods", "analysis_methods")},
 }
-CONFIG_TABLES = ["event_names", "patho_divisions", "case_priority", "requisition_types", "block_types",
+CONFIG_TABLES = ["actor_roles", "event_names", "patho_divisions", "case_priority", "requisition_types", "block_types",
                  "slide_types", "workflow_profiles", "lab_locations", "workstation_types"]
 
 
@@ -470,8 +481,12 @@ def finish_objects(db: Db, names: Names, types: dict[str, ObjectType], latest: d
 
     def link(kind: str, df: pl.DataFrame, col: str, target: str, q: str):
         d = df.filter(pl.col(col).is_not_null())
-        o2o_parts.append(pl.DataFrame({"ocel_source_id": ids.obj(kind, d["id"]),
-                                       "ocel_target_id": ids.obj(target, d[col]), "ocel_qualifier": q}))
+        # explicit schema: from a dict mixing an EMPTY Series with a scalar, polars makes every column
+        # dtype Null, which then cannot be stacked with the non-empty parts
+        o2o_parts.append(pl.DataFrame(
+            {"ocel_source_id": ids.obj(kind, d["id"]), "ocel_target_id": ids.obj(target, d[col]),
+             "ocel_qualifier": pl.Series([q] * d.height, dtype=pl.String)},
+            schema={"ocel_source_id": pl.String, "ocel_target_id": pl.String, "ocel_qualifier": pl.String}))
 
     for kind in ("container", "block", "analysis"):
         link(kind, latest[kind], "case_id", "case", "part of")
@@ -784,7 +799,307 @@ def output_kind(p: Path) -> str:
         return "bundle"
     if n.endswith((".json", ".jsonocel", ".json.gz", ".jsonocel.gz")):
         return "json"
-    raise SystemExit(f"unsupported output extension: {p.name} (use .ocel.zip, .json[.gz] or .jsonocel[.gz])")
+    if n.endswith((".xes", ".xes.gz")):
+        return "xes"
+    if n.endswith((".csv", ".parquet")):
+        return "flat"
+    raise SystemExit(f"unsupported output extension: {p.name} "
+                     f"(OCEL: .ocel.zip, .json[.gz], .jsonocel[.gz]; XES: .xes[.gz], flat XES table: .csv, .parquet)")
+
+
+# --- XES ----------------------------------------------------------------------------------------
+# One trace per case. Case-level events (and REPORT/OTHER tokens) are kept 1:1; block/slide/
+# container/analysis events are flattened into episodes: per case, token type and activity, the
+# per-token intervals (START..FINISH, instant events as points) are merged when they overlap or are at
+# most --merge-gap apart. An episode becomes a start and/or a complete event (only the lifecycle
+# transitions that were observed), with token_count = number of distinct tokens in it.
+
+DEFAULT_MERGE_GAP = "30m"
+TOKEN_NAMES = {**TOKEN_KIND, 5: "report", 6: "other"}
+XES_EXTENSIONS = [("Concept", "concept"), ("Time", "time"), ("Lifecycle", "lifecycle"),
+                  ("Organizational", "org"), ("Identity", "identity")]
+XES_DATE = "%Y-%m-%dT%H:%M:%S%.3f+00:00"
+CASE_COUNTS = {"container": "containers", "block": "blocks", "slide": "slides", "analysis": "analyses"}
+XES_EVENT_COLS = {"case:concept:name": pl.String, "concept:name": pl.String, "time:timestamp": pl.Datetime("us", "UTC"),
+                  "lifecycle:transition": pl.String, "org:resource": pl.String, "org:role": pl.String,
+                  "identity:id": pl.String, "workstation": pl.String, "lab_location": pl.String,
+                  "revision": pl.Int64, "token_type": pl.String, "token_count": pl.Int64}
+CASE_KEY = "case:concept:name"
+
+
+def parse_duration(s: str) -> dt.timedelta:
+    m = re.fullmatch(r"(\d+)\s*([smhd]?)", s.strip())
+    if not m:
+        raise argparse.ArgumentTypeError(f"invalid duration '{s}' (e.g. 0, 90s, 30m, 2h, 1d)")
+    unit = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days", "": "seconds"}[m[2]]
+    return dt.timedelta(**{unit: int(m[1])})
+
+
+def case_batches(db: Db, sql: str, batch_size: int | None):
+    """Events ordered by case; batches never split a case (the last case of a batch is carried over)."""
+    if batch_size is None:
+        yield db.query(sql)
+        return
+    carry = None
+    for b in db.stream(sql, batch_size):
+        if carry is not None:
+            b = pl.concat([carry, b], how="vertical_relaxed")
+        last = b["case_id"][-1]
+        carry = b.filter(pl.col("case_id") == last)
+        done = b.filter(pl.col("case_id") != last)
+        if done.height:
+            yield done
+    if carry is not None and carry.height:
+        yield carry
+
+
+def flatten(ev: pl.DataFrame, gap: dt.timedelta) -> pl.DataFrame:
+    """Raw events -> trace rows (raw references, resolved later)."""
+    is_tok = pl.col("token_type").is_between(1, 4)
+    case_rows = ev.filter(~is_tok).select(
+        "case_id", "ocel_id", "event_name", pl.col("happened_at").alias("time"),
+        pl.col("event_type").replace_strict(LIFECYCLE, default="unknown", return_dtype=pl.String).alias("lifecycle"),
+        "actor_ref", "workstation_ref", "lab_ref", pl.col("revision").cast(pl.Int64),
+        pl.when(pl.col("token_type") != 0).then(
+            pl.col("token_type").replace_strict(TOKEN_NAMES, default="other", return_dtype=pl.String)).alias("token_type"),
+        pl.lit(None, pl.Int64).alias("token_count"),
+    )
+    tok = ev.filter(is_tok)
+    if tok.is_empty():
+        return case_rows.sort("case_id", "time", "ocel_id")
+
+    # 1. per token: an interval per START (run = number of STARTs so far), FINISH/others join the open run
+    tg = ["case_id", "token_type", "token_id", "event_name"]
+    tok = tok.sort(*tg, "happened_at", "ocel_id").with_columns(
+        (pl.col("event_type") == 1).cum_sum().over(tg).alias("_run"))
+    iv = tok.group_by(*tg, "_run").agg(
+        pl.col("happened_at").min().alias("s"), pl.col("happened_at").max().alias("e"),
+        (pl.col("event_type") == 1).any().alias("has_start"),
+        (pl.col("event_type") != 1).any().alias("has_end"),
+        (pl.col("event_type") == 0).all().alias("instant"),
+        pl.col("actor_ref", "workstation_ref", "lab_ref", "ocel_id").first().name.suffix("_0"),
+        pl.col("actor_ref", "workstation_ref", "lab_ref").last().name.suffix("_1"),
+        pl.col("revision").max(),
+    )
+    # 2. per case, token type and activity: merge intervals that overlap or are <= gap apart
+    eg = ["case_id", "token_type", "event_name"]
+    iv = iv.sort(*eg, "s", "ocel_id_0").with_columns(
+        (pl.col("s") > pl.col("e").cum_max().shift(1).over(eg) + gap).fill_null(True).cum_sum().over(eg).alias("_ep"))
+    ep = iv.group_by(*eg, "_ep").agg(
+        pl.col("s").min(), pl.col("e").max(), pl.col("has_start").any(), pl.col("has_end").any(),
+        pl.col("instant").all(), pl.col("token_id").n_unique().alias("token_count"), pl.col("revision").max(),
+        # ties (blocks started in one batch share a timestamp) are broken by event id: deterministic output
+        *(pl.col(f"{c}_0").sort_by("s", "ocel_id_0").first() for c in ("actor_ref", "workstation_ref", "lab_ref", "ocel_id")),
+        *(pl.col(f"{c}_1").sort_by("e", "ocel_id_0").last() for c in ("actor_ref", "workstation_ref", "lab_ref")),
+    )
+    common = ["case_id", "event_name", "revision",
+              pl.col("token_type").replace_strict(TOKEN_NAMES, return_dtype=pl.String), pl.col("token_count").cast(pl.Int64)]
+    starts = ep.filter(pl.col("has_start") & ~pl.col("instant")).select(
+        *common, (pl.col("ocel_id_0") + "/start").alias("ocel_id"), pl.col("s").alias("time"),
+        pl.lit("start").alias("lifecycle"),
+        *(pl.col(f"{c}_0").alias(c) for c in ("actor_ref", "workstation_ref", "lab_ref")))
+    ends = ep.filter(pl.col("has_end")).select(
+        *common, (pl.col("ocel_id_0") + "/complete").alias("ocel_id"),
+        pl.when(pl.col("instant")).then(pl.col("s")).otherwise(pl.col("e")).alias("time"),
+        pl.lit("complete").alias("lifecycle"),
+        *(pl.when(pl.col("instant")).then(pl.col(f"{c}_0")).otherwise(pl.col(f"{c}_1")).alias(c)
+          for c in ("actor_ref", "workstation_ref", "lab_ref")))
+    rows = pl.concat([case_rows, starts.select(case_rows.columns), ends.select(case_rows.columns)], how="vertical_relaxed")
+    return rows.sort("case_id", "time", pl.col("lifecycle") != "start", "ocel_id")
+
+
+def load_roles(db: Db, config: dict) -> pl.DataFrame:
+    r = db.query("SELECT actor_id, role_id, valid_from, valid_until FROM master.role_assignments")
+    return r.select(
+        pl.col("actor_id").cast(pl.Int64), "valid_from", "valid_until",
+        pl.col("role_id").replace_strict(config["actor_roles"], default=pl.col("role_id").cast(pl.String),
+                                         return_dtype=pl.String).alias("role")).sort("valid_from")
+
+
+def xes_events(rows: pl.DataFrame, names: Names, roles: pl.DataFrame) -> pl.DataFrame:
+    """Resolve references (names/ids/hashes as for OCEL) and the actor's role at the event time."""
+    ids = names.ids
+    out = pl.DataFrame({
+        CASE_KEY: ids.ref("case", rows["case_id"]).cast(pl.String),
+        "concept:name": rows["event_name"].replace_strict(names.config["event_names"],
+                                                          default=rows["event_name"].cast(pl.String), return_dtype=pl.String),
+        "time:timestamp": rows["time"],
+        "lifecycle:transition": rows["lifecycle"],
+        "org:resource": names.resolve(rows["actor_ref"], "actor", "actors").cast(pl.String),
+        "identity:id": rows["ocel_id"],
+        "workstation": names.resolve(rows["workstation_ref"], "master", "workstations").cast(pl.String),
+        "lab_location": names.resolve(rows["lab_ref"], "config", "lab_locations").cast(pl.String),
+        "revision": rows["revision"], "token_type": rows["token_type"], "token_count": rows["token_count"],
+        "_actor": rows["actor_ref"].cast(pl.Int64),
+    }).with_row_index("_i")
+    if roles.height:
+        j = out.sort("time:timestamp").join_asof(
+            roles, left_on="time:timestamp", right_on="valid_from", by_left="_actor", by_right="actor_id",
+            strategy="backward", check_sortedness=False)
+        j = j.with_columns(pl.when(pl.col("valid_until").is_null() | (pl.col("time:timestamp") < pl.col("valid_until")))
+                           .then(pl.col("role")).alias("org:role")).sort("_i")
+        out = out.with_columns(j["org:role"])
+    else:
+        out = out.with_columns(pl.lit(None, pl.String).alias("org:role"))
+    return out.select(list(XES_EVENT_COLS))
+
+
+def latest_values(t: ObjectType) -> pl.DataFrame:
+    """Object attributes as of now (initial values with all changes applied)."""
+    df = t.initial
+    for a in t.attrs:
+        last = (t.changes.filter(pl.col("ocel_changed_field") == a).sort("ocel_time")
+                .group_by("ocel_id").agg(pl.col(a).last().alias("_v")))
+        if last.height:
+            df = df.join(last, on="ocel_id", how="left").with_columns(pl.coalesce("_v", a).alias(a)).drop("_v")
+    return df
+
+
+def trace_attributes(types: dict[str, ObjectType], latest: dict[str, pl.DataFrame], names: Names) -> pl.DataFrame:
+    """Per case: current attribute values and the number of containers/blocks/slides/analyses."""
+    tr = latest_values(types["case"]).with_columns(pl.col("ocel_id").str.strip_prefix("case:").alias(CASE_KEY)).drop("ocel_id")
+    for kind, col in CASE_COUNTS.items():
+        raw = latest[kind]
+        cnt = (pl.DataFrame({CASE_KEY: names.ids.ref("case", raw["case_id"]).cast(pl.String)})
+               .group_by(CASE_KEY).agg(pl.len().cast(pl.Int64).alias(col)))
+        tr = tr.join(cnt, on=CASE_KEY, how="left").with_columns(pl.col(col).fill_null(0))
+    return tr.select(CASE_KEY, pl.exclude(CASE_KEY))
+
+
+def xesc(e: pl.Expr) -> pl.Expr:
+    """XML attribute escaping (and removal of control characters XML 1.0 forbids)."""
+    return (e.str.replace_all(r"[\x00-\x08\x0B\x0C\x0E-\x1F]", "")
+            .str.replace_all("&", "&amp;", literal=True).str.replace_all("<", "&lt;", literal=True)
+            .str.replace_all(">", "&gt;", literal=True).str.replace_all('"', "&quot;", literal=True))
+
+
+def xattr(key: str, dtype: pl.DataType) -> pl.Expr:
+    e = pl.col(key)
+    if isinstance(dtype, pl.Datetime):
+        tag, val = "date", e.dt.to_string(XES_DATE)
+    elif dtype.is_integer():
+        tag, val = "int", e.cast(pl.String)
+    elif dtype.is_float():
+        tag, val = "float", e.cast(pl.String)
+    elif dtype == pl.Boolean:
+        tag, val = "boolean", pl.when(e).then(pl.lit("true")).otherwise(pl.lit("false"))
+    else:
+        tag, val = "string", xesc(e.cast(pl.String))
+    k = key.replace("&", "&amp;").replace('"', "&quot;")
+    return pl.when(e.is_not_null()).then(jfmt(f'<{tag} key="{k}" value="{{}}"/>', val))
+
+
+def xml_elements(df: pl.DataFrame, cols: list[str]) -> pl.Expr:
+    return pl.concat_list([xattr(c, df.schema[c]) for c in cols]).list.drop_nulls().list.join("")
+
+
+class XesSink:
+    """Writes XES XML (.xes/.xes.gz) and flat event tables (.csv/.parquet) trace batch by trace batch."""
+
+    def __init__(self, paths: list[Path], trace_schema: dict, log_attrs: dict[str, str]):
+        self.trace_schema = trace_schema
+        self.flat_schema = {**XES_EVENT_COLS, **{f"case:{c}": t for c, t in trace_schema.items() if c != CASE_KEY}}
+        self.xml, self.csv, self.parquet = [], [], []
+        for p in paths:
+            n = p.name.lower()
+            if n.endswith((".xes", ".xes.gz")):
+                f = (gzip.open if n.endswith(".gz") else open)(p, "wt", encoding="utf-8")
+                f.write(self._header(log_attrs))
+                self.xml.append(f)
+            elif n.endswith(".csv"):
+                self.csv.append([open(p, "w", encoding="utf-8", newline=""), True])
+            else:
+                self.parquet.append([p, None])
+
+    @staticmethod
+    def _header(log_attrs: dict[str, str]) -> str:
+        h = ['<?xml version="1.0" encoding="UTF-8"?>',
+             # xes.version must be a decimal (official XSD); no namespace (the XSD has no targetNamespace)
+             '<log xes.version="2.0">']
+        h += [f'<extension name="{n}" prefix="{p}" uri="http://www.xes-standard.org/{p}.xesext"/>' for n, p in XES_EXTENSIONS]
+        h += ['<global scope="trace"><string key="concept:name" value="__INVALID__"/></global>',
+              '<global scope="event"><string key="concept:name" value="__INVALID__"/>'
+              '<date key="time:timestamp" value="1970-01-01T00:00:00.000+00:00"/>'
+              '<string key="lifecycle:transition" value="complete"/></global>',
+              '<classifier name="Activity" keys="concept:name"/>',
+              '<classifier name="ActivityLifecycle" keys="concept:name lifecycle:transition"/>']  # names: NCName
+        esc = lambda s: s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")  # noqa: E731
+        h += [f'<string key="{k}" value="{esc(v)}"/>' for k, v in log_attrs.items()]
+        return "\n".join(h) + "\n"
+
+    def write(self, events: pl.DataFrame, traces: pl.DataFrame) -> None:
+        # traces of this batch (cases without a trans/hist row only get their concept:name)
+        tr = events.select(CASE_KEY).unique(maintain_order=True).join(traces, on=CASE_KEY, how="left")
+        tr = tr.select(pl.col(c).cast(t) for c, t in self.trace_schema.items())
+        if self.xml:
+            ev_cols = [c for c in XES_EVENT_COLS if c != CASE_KEY]
+            ev = events.select(CASE_KEY, ("<event>" + xml_elements(events, ev_cols) + "</event>").alias("_x"))
+            ev = ev.group_by(CASE_KEY, maintain_order=True).agg(pl.col("_x").str.join(""))
+            # inside <trace> the case id is concept:name (the flat table calls it case:concept:name)
+            xt = tr.with_columns(pl.col(CASE_KEY).alias("concept:name"))
+            attrs = ["concept:name", *(c for c in self.trace_schema if c != CASE_KEY)]
+            xml = xt.select(CASE_KEY, xml_elements(xt, attrs).alias("_a")).join(ev, on=CASE_KEY, how="left")
+            chunk = "\n".join(xml.select("<trace>" + pl.col("_a") + pl.col("_x") + "</trace>").to_series().to_list())
+            for f in self.xml:
+                f.write(chunk + "\n")
+        if self.csv or self.parquet:
+            flat = events.join(tr.rename({c: f"case:{c}" for c in tr.columns if c != CASE_KEY}), on=CASE_KEY, how="left")
+            flat = flat.select(pl.col(c).cast(t) for c, t in self.flat_schema.items())
+            for item in self.csv:
+                flat.write_csv(item[0], include_header=item[1], datetime_format="%Y-%m-%dT%H:%M:%S%.3f%:z")
+                item[1] = False
+            for item in self.parquet:
+                table = flat.to_arrow()
+                if item[1] is None:
+                    item[1] = pq.ParquetWriter(item[0], table.schema, compression="zstd")
+                item[1].write_table(table.cast(item[1].schema))
+
+    def close(self) -> None:
+        for f in self.xml:
+            f.write("</log>\n")
+            f.close()
+        for f, _ in self.csv:
+            f.close()
+        for p, w in self.parquet:
+            if w is None:  # no events: still write a valid, empty table
+                pq.write_table(pl.DataFrame(schema=self.flat_schema).to_arrow(), p)
+            else:
+                w.close()
+
+
+def run_xes(db: Db, sel: Selection, names: Names, args, salt: str, paths: list[Path], log_attrs: dict, t0: float) -> None:
+    cte = sel.case_cte()
+    sql = event_sql(sel, cte, salt)
+    n_raw = db.query(f"SELECT count(*) AS n FROM ({sql}) x")["n"][0]
+    types, latest = load_objects(db, cte, names, not args.no_history, existing_tables(db))
+    traces = trace_attributes(types, latest, names)
+    roles = load_roles(db, names.config)
+    log(f"  objects loaded ({time.time() - t0:.1f}s)")
+    sink = None if args.dry_run else XesSink(paths, dict(traces.schema), log_attrs)
+    n_ev = n_tok = n_rows = n_traces = 0
+    ordered = f"SELECT DISTINCT * FROM ({sql}) x ORDER BY case_id, happened_at, ocel_id"
+    for i, ev in enumerate(case_batches(db, ordered, args.batch_size)):
+        if ev.is_empty():
+            continue
+        rows = flatten(ev, args.merge_gap)
+        xev = xes_events(rows, names, roles)
+        if sink is not None:
+            sink.write(xev, traces)
+        n_ev += ev.height
+        n_tok += ev.filter(pl.col("token_type").is_between(1, 4)).height
+        n_rows += xev.height
+        n_traces += xev[CASE_KEY].n_unique()
+        if args.batch_size:
+            log(f"  batch {i + 1}: {n_ev:,} / {n_raw:,} events ({time.time() - t0:.1f}s)")
+    stats = {"events (raw rows)": n_raw, "exact duplicates dropped": n_raw - n_ev,
+             "token-level events (flattened into episodes)": n_tok,
+             "XES traces": n_traces, "XES events": n_rows}
+    for k, v in stats.items():
+        log(f"  {k:<48} {v:>12,}")
+    if sink is not None:
+        sink.close()
+        for p in paths:
+            log(f"wrote {p} ({p.stat().st_size / 1e6:,.1f} MB)")
 
 
 # --- CLI --------------------------------------------------------------------------------------
@@ -851,10 +1166,15 @@ def main() -> None:
     x.add_argument("--batch-size", type=int, nargs="?", const=DEFAULT_BATCH, metavar="N",
                    help=f"stream the events from the database in batches of ~N rows directly into the "
                         f"Parquet files, so memory depends on N and the number of objects instead of the "
-                        f"number of events. Only for .ocel.zip outputs. Recommended: {DEFAULT_BATCH} (used for a "
+                        f"number of events. For .ocel.zip and XES/flat outputs (not JSON). Recommended: {DEFAULT_BATCH} (used for a "
                         f"bare --batch-size): ~1.3 KB per batch row, i.e. ~0.15 GB on top of the objects, and "
                         f"the best compression in tests; much smaller batches give more Parquet row groups "
                         f"(slightly larger files), larger ones only cost memory")
+    xg = ap.add_argument_group("XES")
+    xg.add_argument("--merge-gap", type=parse_duration, default=parse_duration(DEFAULT_MERGE_GAP), metavar="DURATION",
+                    help=f"block/slide/container/analysis events of one case and activity are merged into one episode "
+                         f"when their intervals overlap or are at most this far apart (e.g. 0, 90s, 30m, 2h, 1d; "
+                         f"default {DEFAULT_MERGE_GAP})")
     args = ap.parse_args()
 
     if not args.output and not args.dry_run:
@@ -863,8 +1183,8 @@ def main() -> None:
     if args.batch_size is not None:
         if args.batch_size < 1:
             ap.error("--batch-size must be positive")
-        if any(k != "bundle" for k in kinds.values()):
-            ap.error("--batch-size only supports .ocel.zip outputs (JSON is still written in memory)")
+        if any(k == "json" for k in kinds.values()):
+            ap.error("--batch-size does not support JSON outputs (JSON is written in memory)")
     load_dotenv()
     salt = args.salt or os.environ.get("UNPAIDME_OCEL_SALT")
     if args.hash_ids and not salt:
@@ -890,22 +1210,46 @@ def main() -> None:
     names = Names(args.names, ids, config, {t: db.lookup(s) for t, s in need.items()}, args.hash_ids)
 
     t0 = time.time()
-    log("extracting ...")
-    if args.batch_size is not None:
-        run_batched(db, sel, names, args, salt if args.hash_ids else "", list(kinds), t0)
-        return
-    o = build(db, sel, names, not args.no_history, salt if args.hash_ids else "")
-    for k, v in o.stats.items():
-        log(f"  {k:<48} {v:>12,}")
-    if o.events.is_empty():
-        log("warning: selection contains no events")
-    for path, kind in kinds.items():
-        if args.dry_run:
-            break
-        t1 = time.time()
-        (write_bundle if kind == "bundle" else write_json)(o, path)
-        log(f"wrote {path} ({path.stat().st_size / 1e6:,.1f} MB, {time.time() - t1:.1f}s)")
+    hsalt = salt if args.hash_ids else ""
+    ocel_paths = [p for p, k in kinds.items() if k in ("bundle", "json")]
+    xes_paths = [p for p, k in kinds.items() if k in ("xes", "flat")]
+    if ocel_paths or not xes_paths:  # (a bare --dry-run reports the OCEL view)
+        log("OCEL: extracting ...")
+        if args.batch_size is not None:
+            run_batched(db, sel, names, args, hsalt, ocel_paths, t0)
+        else:
+            o = build(db, sel, names, not args.no_history, hsalt)
+            for k, v in o.stats.items():
+                log(f"  {k:<48} {v:>12,}")
+            if o.events.is_empty():
+                log("warning: selection contains no events")
+            for path in ocel_paths if not args.dry_run else []:
+                t1 = time.time()
+                (write_bundle if kinds[path] == "bundle" else write_json)(o, path)
+                log(f"wrote {path} ({path.stat().st_size / 1e6:,.1f} MB, {time.time() - t1:.1f}s)")
+    if xes_paths:
+        log("XES: extracting ...")
+        log_attrs = {"concept:name": "UNPAIDME event log", "lifecycle:model": "standard",
+                     "exported_at": dt.datetime.now(dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                     "export_parameters": export_parameters(sys.argv[1:])}
+        run_xes(db, sel, names, args, hsalt, xes_paths, log_attrs, t0)
     log(f"done in {time.time() - t0:.1f}s")
+
+
+def export_parameters(argv: list[str]) -> str:
+    """The command line for provenance, without secrets, connection details and output paths."""
+    out, skip = [], False
+    for a in argv:
+        if skip:
+            skip = False
+            continue
+        if a in ("--salt", "--dsn", "-o", "--output"):
+            skip = True
+            continue
+        if a.startswith(("--salt=", "--dsn=", "--output=", "-o")):
+            continue
+        out.append(a)
+    return " ".join(out)
 
 
 def run_batched(db: Db, sel: Selection, names: Names, args, salt: str, paths: list[Path], t0: float) -> None:
@@ -921,7 +1265,6 @@ def run_batched(db: Db, sel: Selection, names: Names, args, salt: str, paths: li
             sink.close(paths)
             for path in paths:
                 log(f"wrote {path} ({path.stat().st_size / 1e6:,.1f} MB, {time.time() - t1:.1f}s)")
-    log(f"done in {time.time() - t0:.1f}s")
 
 
 if __name__ == "__main__":
