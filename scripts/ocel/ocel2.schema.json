@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:unpaidme:ocel2-json-schema",
+  "title": "OCEL 2.0 JSON (as read by pm4py)",
+  "description": "JSON serialization of an OCEL 2.0 object-centric event log, following section 8 of the OCEL 2.1 specification (v2.1.0pre5). There is no official schema; this one is stricter than the prose where pm4py's importer (pm4py.read_ocel2_json, variant ocel20_standard) would fail or silently lose data: relationships need 'objectId' AND 'qualifier', object attributes need 'time', unknown keys are rejected (e.g. XML-style 'relationship' instead of 'qualifier'). Cross-references (event/object type names, relationship targets) cannot be expressed in JSON Schema; tests/check_export.py checks them.",
+  "type": "object",
+  "required": ["objectTypes", "eventTypes", "objects", "events"],
+  "additionalProperties": false,
+  "properties": {
+    "objectTypes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/type" }
+    },
+    "eventTypes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/type" }
+    },
+    "objects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "type": { "type": "string", "minLength": 1, "description": "Name of an entry in objectTypes." },
+          "attributes": {
+            "type": "array",
+            "description": "Attribute values over time. pm4py takes the FIRST entry per name as the initial value and the following ones as changes, so entries must be in time order per name; the initial value carries time 1970-01-01T00:00:00Z.",
+            "items": {
+              "type": "object",
+              "required": ["name", "time", "value"],
+              "additionalProperties": false,
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "time": { "$ref": "#/$defs/time" },
+                "value": { "$ref": "#/$defs/value" }
+              }
+            }
+          },
+          "relationships": {
+            "type": "array",
+            "description": "Object-to-object (O2O) relationships.",
+            "items": { "$ref": "#/$defs/relationship" }
+          }
+        }
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "time"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "$ref": "#/$defs/id" },
+          "type": { "type": "string", "minLength": 1, "description": "Name of an entry in eventTypes." },
+          "time": { "$ref": "#/$defs/time" },
+          "attributes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "value"],
+              "additionalProperties": false,
+              "properties": {
+                "name": { "type": "string", "minLength": 1 },
+                "value": { "$ref": "#/$defs/value" }
+              }
+            }
+          },
+          "relationships": {
+            "type": "array",
+            "description": "Event-to-object (E2O) relationships.",
+            "items": { "$ref": "#/$defs/relationship" }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "id": { "type": "string", "minLength": 1 },
+    "time": {
+      "type": "string",
+      "description": "ISO 8601 date-time WITH time zone (Z or +hh:mm).",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:?\\d{2})$"
+    },
+    "value": {
+      "description": "Typed by the declaration in eventTypes/objectTypes; 'time' values are ISO strings.",
+      "type": ["string", "number", "boolean", "null"]
+    },
+    "type": {
+      "type": "object",
+      "required": ["name", "attributes"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "attributes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "type"],
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "type": { "enum": ["string", "time", "integer", "float", "boolean"] }
+            }
+          }
+        }
+      }
+    },
+    "relationship": {
+      "type": "object",
+      "required": ["objectId", "qualifier"],
+      "additionalProperties": false,
+      "properties": {
+        "objectId": { "$ref": "#/$defs/id" },
+        "qualifier": { "type": "string" }
+      }
+    }
+  }
+}
